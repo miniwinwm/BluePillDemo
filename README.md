@@ -13,9 +13,9 @@ Select this processor when it is listed on the right, Next
 
 Enter Project Name, select C++ if you need it, leave other selections default, Finish
 
-In <Project Name>.ioc editor Select Pinout & Configuration tab
+In 'Project Name'.ioc editor Select Pinout & Configuration tab
 
-In Pinout & Configuration choose Categhories then expand System Core then select SYS
+In Pinout & Configuration choose Categories then expand System Core then select SYS
 
 Under Debug select Serial Wire
 
