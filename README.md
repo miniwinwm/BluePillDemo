@@ -1,9 +1,9 @@
 # BluePillDemo
 
 These projects can be imported into STM32CubeIDE.
-Each sub-folder has a readme.txt file describing the project and a schematic.pdf file showing the circuit used.
+Each sub-folder has a readme.txt file describing the project and a schematic.pdf file showing the circuit used. Flashing and debugging needs a ST-LINK device connected to the Serial Wire 4 pin header at the end of the Blue Pill board.
 
-A brief explanation of how to create a new project for the Blue Pill board in STM32CubeIDE is shown below:
+A brief explanation of how to create a new project for the Blue Pill board in STM32CubeIDE using a ST-LINK device for flashing/debugging is shown below:
 
 File|New|STM32 Project
 
