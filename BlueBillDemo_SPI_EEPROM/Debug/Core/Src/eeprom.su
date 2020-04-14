@@ -1,0 +1,8 @@
+eeprom.c:11:6:eeprom_init	8	static
+eeprom.c:16:13:chip_select	8	static
+eeprom.c:21:13:chip_deselect	8	static
+eeprom.c:26:10:eeprom_read_string	32	static
+eeprom.c:50:6:eeprom_write_buf	24	static
+eeprom.c:60:6:eeprom_read_buf	32	static
+eeprom.c:70:6:eeprom_write_byte	24	static
+eeprom.c:90:9:eeprom_read_byte	32	static
