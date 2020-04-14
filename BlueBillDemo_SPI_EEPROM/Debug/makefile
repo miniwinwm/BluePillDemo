@@ -37,8 +37,8 @@ BlueBillDemo_SPI_EEPROM.list \
 all: BlueBillDemo_SPI_EEPROM.elf secondary-outputs
 
 # Tool invocations
-BlueBillDemo_SPI_EEPROM.elf: $(OBJS) $(USER_OBJS) C:\Users\John\STM32CubeIDE\workspace_1.1.0\BlueBillDemo_SPI_EEPROM\STM32F103C8TX_FLASH.ld
-	arm-none-eabi-gcc -o "BlueBillDemo_SPI_EEPROM.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\John\STM32CubeIDE\workspace_1.1.0\BlueBillDemo_SPI_EEPROM\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BlueBillDemo_SPI_EEPROM.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+BlueBillDemo_SPI_EEPROM.elf: $(OBJS) $(USER_OBJS) C:\Users\John\Desktop\workspace\BluePillDemo\BlueBillDemo_SPI_EEPROM\STM32F103C8TX_FLASH.ld
+	arm-none-eabi-gcc -o "BlueBillDemo_SPI_EEPROM.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\John\Desktop\workspace\BluePillDemo\BlueBillDemo_SPI_EEPROM\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BlueBillDemo_SPI_EEPROM.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
