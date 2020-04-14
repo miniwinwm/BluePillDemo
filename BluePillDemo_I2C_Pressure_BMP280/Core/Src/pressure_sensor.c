@@ -83,13 +83,13 @@ void pressure_sensor_init(I2C_HandleTypeDef *hi2c)
   HAL_I2C_Mem_Read(press_sensor_hi2c, I2C_PRESSURE_SENSOR_ADDRESS << 1, 0x9eU, 1U, (uint8_t *)&dig_P9, 2U, 100U);
 }
 
-void pressure_sensor_start_measurement_mb(void)
+void pressure_sensor_start_measurement(void)
 {
   uint8_t data = 0x25U;
   HAL_I2C_Mem_Write(press_sensor_hi2c, I2C_PRESSURE_SENSOR_ADDRESS << 1, 0xf4U, 1U, &data, 1U, 100U);
 }
 
-float pressure_sensor_get_measurement_mb(void)
+void pressure_sensor_get_measurement(float *pressure_mb, float *temp_c)
 {
   int32_t adc_T;
   int32_t adc_P;
@@ -106,7 +106,7 @@ float pressure_sensor_get_measurement_mb(void)
   adc_T |= ((uint32_t)lsb) << 4;
   adc_T |= ((uint32_t)msb) << 12;
 
-  (void)bmp280_compensate_T_int32((int32_t)adc_T);
+  *temp_c = 0.01f * (float)bmp280_compensate_T_int32((int32_t)adc_T);
 
   HAL_I2C_Mem_Read(press_sensor_hi2c, I2C_PRESSURE_SENSOR_ADDRESS << 1, 0xf7u, 1, &msb, 1U, 1000);
   HAL_I2C_Mem_Read(press_sensor_hi2c, I2C_PRESSURE_SENSOR_ADDRESS << 1, 0xf8u, 1, &lsb, 1U, 1000);
@@ -117,5 +117,5 @@ float pressure_sensor_get_measurement_mb(void)
   adc_P |= ((uint32_t)msb) << 12;
 
   P = bmp280_compensate_P_int64((int32_t)adc_P);
-  return (float)P / 25600.0f;
+  *pressure_mb = (float)P / 25600.0f;
 }

@@ -4,7 +4,7 @@
 #include "stm32f1xx_hal.h"
 
 void pressure_sensor_init(I2C_HandleTypeDef *hi2c);
-void pressure_sensor_start_measurement_mb(void);
-float pressure_sensor_get_measurement_mb(void);
+void pressure_sensor_start_measurement(void);
+void pressure_sensor_get_measurement(float *pressure_mb, float *temp_c);
 
 #endif

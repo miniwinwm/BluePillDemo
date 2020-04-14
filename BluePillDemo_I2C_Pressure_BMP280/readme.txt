@@ -10,7 +10,8 @@ Then a reading start command can be sent. A delay is needed before reading the r
 
 After reading the raw results there is a some mathematical processing that needs 
 to be performed on the raw readings using the 12 constants read earlier. The resulting pressure
-is given in millibars. Temperature not calculated yet.
+is given in millibars and temperature in degrees Celsius. pausing the code in the debugger
+the measured values of pressure and temperature can be seen. 
 
 The code to operate this device is given in a separate files pressure_sensor.h/c.
 

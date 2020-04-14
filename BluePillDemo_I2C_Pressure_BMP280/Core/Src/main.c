@@ -97,10 +97,13 @@ int main(void)
 
   pressure_sensor_init(&hi2c1);
 
-  pressure_sensor_start_measurement_mb();
+  pressure_sensor_start_measurement();
   HAL_Delay(500U);
-  float pressure_mb = pressure_sensor_get_measurement_mb();
+  float pressure_mb;
+  float temp_c;
+  pressure_sensor_get_measurement(&pressure_mb, &temp_c);
   (void)pressure_mb;
+  (void)temp_c;
 
   /* USER CODE END 2 */
 

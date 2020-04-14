@@ -71,6 +71,8 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
+  // in the mouse report byte 0 contains 3 button state bits
+  // byte 1,2,3 is x, y, thumbwheel movement
   uint8_t mouse_report[5] = {0};
   uint8_t i;
 
@@ -97,8 +99,6 @@ int main(void)
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-
-
 
   /* USER CODE END 2 */
 
