@@ -1,0 +1,6 @@
+main.c:64:6:HAL_GPIO_EXTI_Callback	24	static
+main.c:87:5:main	80	static
+main.c:154:6:SystemClock_Config	72	static
+main.c:192:13:MX_SPI2_Init	8	static
+main.c:230:13:MX_GPIO_Init	40	static
+main.c:280:6:Error_Handler	4	static
