@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "pressure_sensor.h"
+#include "lcd.h"
 
 /* USER CODE END Includes */
 
@@ -43,29 +43,32 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
-
 typedef StaticTask_t osStaticThreadDef_t;
 typedef StaticQueue_t osStaticMessageQDef_t;
 osThreadId_t mainHandle;
 uint32_t mainBuffer[ 128 ];
 osStaticThreadDef_t mainControlBlock;
-osThreadId_t pressureSensorHandle;
-uint32_t pressureSensorBuffer[ 128 ];
-osStaticThreadDef_t pressureSensorControlBlock;
-osMessageQueueId_t pressureSensorQueueHandle;
-uint8_t pressureSensorQueueBuffer[ 1 * 8 ];
-osStaticMessageQDef_t pressureSensorQueueControlBlock;
+osThreadId_t lcdHandle;
+uint32_t lcdTaskBuffer[ 128 ];
+osStaticThreadDef_t lcdTaskControlBlock;
+osMessageQueueId_t lcdQueueHandle;
+uint8_t lcdBuffer[ 6 * sizeof( lcd_packet_t ) ];
+osStaticMessageQDef_t lcdControlBlock;
 /* USER CODE BEGIN PV */
 osEventFlagsId_t evt_id;
+
+static const uint8_t custom_characters[] = {0x04, 0x0a, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00,
+												0x0e, 0x06, 0x0a, 0x10, 0x10, 0x11, 0x0e, 0x00,
+												0x04, 0x0e, 0x1f, 0x04, 0x04, 0x1f, 0x0e, 0x04,
+												0x04, 0x0e, 0x1f, 0x04, 0x04, 0x04, 0x04, 0x04,
+												0x04, 0x04, 0x04, 0x04, 0x04, 0x1f, 0x0e, 0x04};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
 void mainTask(void *argument);
-void pressureSensorTask(void *argument);
+void lcdTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -105,8 +108,12 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  lcd_init();
+  for (uint8_t i = 0U; i < sizeof(custom_characters) / CG_CHARACTER_SIZE_BYTES; i++)
+  {
+  	lcd_set_cg_character(i + 1U, &(custom_characters[i * CG_CHARACTER_SIZE_BYTES]));
+  }
 
   /* USER CODE END 2 */
 
@@ -126,15 +133,15 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
-  /* definition and creation of pressureSensorQueue */
-  const osMessageQueueAttr_t pressureSensorQueue_attributes = {
-    .name = "pressureSensorQueue",
-    .cb_mem = &pressureSensorQueueControlBlock,
-    .cb_size = sizeof(pressureSensorQueueControlBlock),
-    .mq_mem = &pressureSensorQueueBuffer,
-    .mq_size = sizeof(pressureSensorQueueBuffer)
+  /* definition and creation of lcdQueue */
+  const osMessageQueueAttr_t lcdQueue_attributes = {
+    .name = "lcdQueue",
+    .cb_mem = &lcdControlBlock,
+    .cb_size = sizeof(lcdControlBlock),
+    .mq_mem = &lcdBuffer,
+    .mq_size = sizeof(lcdBuffer)
   };
-  pressureSensorQueueHandle = osMessageQueueNew (1, 8, &pressureSensorQueue_attributes);
+  lcdQueueHandle = osMessageQueueNew (6, sizeof(lcd_packet_t), &lcdQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -152,16 +159,16 @@ int main(void)
   };
   mainHandle = osThreadNew(mainTask, NULL, &main_attributes);
 
-  /* definition and creation of pressureSensor */
-  const osThreadAttr_t pressureSensor_attributes = {
-    .name = "pressureSensor",
-    .stack_mem = &pressureSensorBuffer[0],
-    .stack_size = sizeof(pressureSensorBuffer),
-    .cb_mem = &pressureSensorControlBlock,
-    .cb_size = sizeof(pressureSensorControlBlock),
+  /* definition and creation of lcd */
+  const osThreadAttr_t lcd_attributes = {
+    .name = "lcd",
+    .stack_mem = &lcdTaskBuffer[0],
+    .stack_size = sizeof(lcdTaskBuffer),
+    .cb_mem = &lcdTaskControlBlock,
+    .cb_size = sizeof(lcdTaskControlBlock),
     .priority = (osPriority_t) osPriorityLow,
   };
-  pressureSensorHandle = osThreadNew(pressureSensorTask, NULL, &pressureSensor_attributes);
+  lcdHandle = osThreadNew(lcdTask, NULL, &lcd_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -221,52 +228,49 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
-
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_8, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA0 PA1 PA2 PA8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
@@ -284,40 +288,35 @@ static void MX_GPIO_Init(void)
 void mainTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-  pressure_sensor_data_t pressure_sensor_data;
 
-  // wait for pressure sensor task to start
+  // wait for lcd task to start
   osEventFlagsWait(evt_id, 0x00000001U, osFlagsWaitAny, osWaitForever);
 
   /* Infinite loop */
   for(;;)
   {
-    if (osMessageQueueGet(pressureSensorQueueHandle, &pressure_sensor_data, 0U, 0U) == osOK)
-    {
-    	float t = pressure_sensor_data.temperature;
-    	float p = pressure_sensor_data.pressure;
-    	(void)t;
-    	(void)p;
-    }
+	lcd_clear();
+	osDelay(1000U);
 
-    osDelay(1000U);
+	lcd_puts(0U, 0U, "fred");
+	lcd_puts(1U, 0U, "\x01\x02\x03\x04\x05");
+	osDelay(1000U);
   }
   /* USER CODE END 5 */ 
 }
 
-/* USER CODE BEGIN Header_pressureSensorTask */
+/* USER CODE BEGIN Header_lcdTask */
 /**
-* @brief Function implementing the pressureSensor thread.
+* @brief Function implementing the lcd thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_pressureSensorTask */
-void pressureSensorTask(void *argument)
+/* USER CODE END Header_lcdTask */
+void lcdTask(void *argument)
 {
-  /* USER CODE BEGIN pressureSensorTask */
-  pressure_sensor_data_t pressure_sensor_data;
-
-  pressure_sensor_init(&hi2c1);
+  /* USER CODE BEGIN lcdTask */
+  lcd_packet_t lcd_packet;
+  uint8_t i;
 
   // signal main task that this thread has started
   osEventFlagsSet(evt_id, 0x00000001U);
@@ -325,14 +324,32 @@ void pressureSensorTask(void *argument)
   /* Infinite loop */
   for (;;)
   {
-	pressure_sensor_start_measurement();
-    osDelay(500U);
+	osMessageQueueGet(lcdQueueHandle, &lcd_packet, NULL, osWaitForever);
 
-    pressure_sensor_get_measurement(&pressure_sensor_data.pressure, &pressure_sensor_data.temperature);
-    osMessageQueuePut(pressureSensorQueueHandle, &pressure_sensor_data, 0U, 0U);
-    osDelay(500U);
+	switch (lcd_packet.command)
+	{
+	case CLEAR_SCREEN:
+		lcd_write_command(0x01U);
+		break;
+
+	case WRITE_TEXT:
+		if (lcd_packet.row == 0U)
+		{
+			lcd_write_command(0x80U + lcd_packet.column);
+		}
+		else
+		{
+			lcd_write_command(0xc0U + lcd_packet.column);
+		}
+
+		for (i = 0U; i < lcd_packet.length; i++)
+		{
+			lcd_write_data(lcd_packet.text[i]);
+		}
+		break;
+	}
   }
-  /* USER CODE END pressureSensorTask */
+  /* USER CODE END lcdTask */
 }
 
 /**
