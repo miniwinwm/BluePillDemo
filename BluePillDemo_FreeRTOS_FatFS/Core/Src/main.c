@@ -20,6 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -44,7 +45,15 @@
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
+typedef StaticTask_t osStaticThreadDef_t;
+osThreadId_t file1Handle;
+uint32_t file1Buffer[ 640 ];
+osStaticThreadDef_t file1ControlBlock;
+osThreadId_t file2Handle;
+uint32_t file2Buffer[ 640 ];
+osStaticThreadDef_t file2ControlBlock;
 /* USER CODE BEGIN PV */
+osEventFlagsId_t evt_id;
 
 /* USER CODE END PV */
 
@@ -52,6 +61,9 @@ SPI_HandleTypeDef hspi1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
+void file1Task(void *argument);
+void file2Task(void *argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -91,32 +103,60 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
-  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
-  FATFS fs;
-  FIL fp;
-  FRESULT res;
-  char buf[4];
-  UINT brw;
-  res = f_mount(&fs, "", 0);
-  res = f_unlink("text.txt");
-  res = f_open(&fp, "text.txt", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
-  res = f_write(&fp, "fred", 4, &brw);
-  res = f_lseek(&fp, 0U);
-  res = f_read(&fp, buf, 4, &brw);
-  f_close(&fp);
-  (void)res;
-
-  res = f_unlink("text2.txt");
-  res = f_open(&fp, "text2.txt", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
-  res = f_write(&fp, "fred", 4, &brw);
-  res = f_lseek(&fp, 0U);
-  res = f_read(&fp, buf, 4, &brw);
-  f_close(&fp);
-  (void)res;
-
   /* USER CODE END 2 */
+
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  evt_id = osEventFlagsNew(NULL);
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* definition and creation of file1 */
+  const osThreadAttr_t file1_attributes = {
+    .name = "file1",
+    .stack_mem = &file1Buffer[0],
+    .stack_size = sizeof(file1Buffer),
+    .cb_mem = &file1ControlBlock,
+    .cb_size = sizeof(file1ControlBlock),
+    .priority = (osPriority_t) osPriorityNormal,
+  };
+  file1Handle = osThreadNew(file1Task, NULL, &file1_attributes);
+
+  /* definition and creation of file2 */
+  const osThreadAttr_t file2_attributes = {
+    .name = "file2",
+    .stack_mem = &file2Buffer[0],
+    .stack_size = sizeof(file2Buffer),
+    .cb_mem = &file2ControlBlock,
+    .cb_size = sizeof(file2ControlBlock),
+    .priority = (osPriority_t) osPriorityNormal,
+  };
+  file2Handle = osThreadNew(file2Task, NULL, &file2_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* Start scheduler */
+  osKernelStart();
+  
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -219,13 +259,23 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PA4 */
   GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
@@ -233,6 +283,97 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_file1Task */
+/**
+  * @brief  Function implementing the file1 thread.
+  * @param  argument: Not used 
+  * @retval None
+  */
+/* USER CODE END Header_file1Task */
+void file1Task(void *argument)
+{
+  /* init code for FATFS */
+  MX_FATFS_Init();
+  /* USER CODE BEGIN 5 */
+  FRESULT res;
+  char buf[4];
+  UINT brw;
+  FIL fp;
+
+  // signal file2Task that FatFS is initialised and file processing can begin
+  osEventFlagsSet(evt_id, 0x00000001U);
+
+  res = f_unlink("text.txt");
+  res = f_open(&fp, "text.txt", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
+  res = f_write(&fp, "fred", 4, &brw);
+  res = f_lseek(&fp, 0U);
+  res = f_read(&fp, buf, 4, &brw);
+  f_close(&fp);
+  (void)res;
+
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */ 
+}
+
+/* USER CODE BEGIN Header_file2Task */
+/**
+* @brief Function implementing the file2 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_file2Task */
+void file2Task(void *argument)
+{
+  /* USER CODE BEGIN file2Task */
+  FRESULT res;
+  char buf[4];
+  UINT brw;
+  FIL fp2;
+
+  // wait for file1Task to have started and completed its initialisation of FatFS and mounted drive
+  osEventFlagsWait(evt_id, 0x00000001U, osFlagsWaitAny, osWaitForever);
+
+  res = f_unlink("text2.txt");
+  res = f_open(&fp2, "text2.txt", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
+  res = f_write(&fp2, "fred", 4, &brw);
+  res = f_lseek(&fp2, 0U);
+  res = f_read(&fp2, buf, 4, &brw);
+  f_close(&fp2);
+  (void)res;
+
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END file2Task */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
