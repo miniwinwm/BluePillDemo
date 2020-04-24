@@ -22,8 +22,8 @@ Lock 2 flash areas.
 
 Reading is simpler, you just use the HAL API to read one of the 2 user data bytes at a time.
 
-Here's a further problem - the HAL options byte code is broken. It is fixed in this project. 
-The file that needs copying from this project is... 
+Here's a further problem - the HAL options byte driver code is broken. It is fixed in this 
+project. The file that needs copying from this project is... 
 
 Drivers/STM32F1xxHAL_Driver/Src/stm32f1xx_hal_flash_ex.c
 
