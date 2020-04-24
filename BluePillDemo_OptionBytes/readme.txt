@@ -12,7 +12,7 @@ want to change any of the other data in there you need to read and cache the exi
 change the user data and write the whole lot back. The API is a bit strange as well in HAL,
 only 1 user data option byte can be written at a time so to write both it's a bit of a job...
 
-Read existing option bytes and cache in memory
+Read existing option bytes and cache in memory (this doesn't read the 2 user bytes)
 Unlock 2 flash areas
 Set the first user data byte in cached memory
 Do a combined erase/write back to flash
