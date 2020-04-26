@@ -1,9 +1,11 @@
 #ifndef INC_BUFFERED_SERIAL_H_
 #define INC_BUFFERED_SERIAL_H_
 
-#define RECEIVE_BUFFER_SIZE     64U
+#include "stm32f1xx_hal.h"
+
+#define RECEIVE_BUFFER_SIZE     256U
 #define RECEIVE_FIFO_SIZE		16U
-#define TRANSMIT_BUFFER_SIZE 	64U
+#define TRANSMIT_BUFFER_SIZE 	256U
 #define TRANSMIT_FIFO_SIZE 		16U
 
 /**
@@ -28,6 +30,20 @@ uint16_t serial_write_data(uint16_t length, uint8_t *data);
  * @return How many bytes were transferred into the buffer which may be less than length if there were not enough data available
  */
 uint16_t serial_read_data(uint16_t buffer_length, uint8_t *data);
+
+/**
+ * Returns the number of bytes in the receive buffer waiting to be read
+ *
+ * @return Number of bytes waiting
+ */
+uint16_t serial_received_bytes_waiting(void);
+
+/**
+ * Returns the number of bytes space in the send buffer
+ *
+ * @return Number of bytes space
+ */
+uint16_t serial_send_bytes_space(void);
 
 /**
  * Called by the driver not the user

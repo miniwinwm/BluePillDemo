@@ -13,12 +13,22 @@ static volatile uint8_t receive_fifo[RECEIVE_FIFO_SIZE];
 static volatile uint8_t receive_buffer_1[RECEIVE_BUFFER_SIZE];
 static volatile uint16_t receive_next_write_position;
 static volatile uint16_t receive_next_read_position_1;
-static volatile uint16_t bytes_available_in_receive_buffer_1;
+static volatile uint16_t bytes_available_in_receive_buffer;
 static volatile uint8_t bytes_aleady_copied_out_of_receive_fifo;
 
 extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
+
+uint16_t serial_received_bytes_waiting(void)
+{
+	return bytes_available_in_receive_buffer;
+}
+
+uint16_t serial_send_bytes_space(void)
+{
+	return bytes_free_in_transmit_buffer;
+}
 
 void serial_init(void)
 {
@@ -123,7 +133,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	{
 		receive_buffer_1[receive_next_write_position] = receive_fifo[i];
 		receive_next_write_position++;
-		bytes_available_in_receive_buffer_1++;
+		bytes_available_in_receive_buffer++;
 		if (receive_next_write_position == RECEIVE_BUFFER_SIZE)
 		{
 			receive_next_write_position = 0U;
@@ -140,16 +150,16 @@ uint16_t serial_read_data(uint16_t buffer_length, uint8_t *data)
 
 	__HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_TC);
 
-	if (bytes_available_in_receive_buffer_1 < buffer_length)
+	if (bytes_available_in_receive_buffer < buffer_length)
 	{
-		bytes_to_read_from_receive_buffer = bytes_available_in_receive_buffer_1;
+		bytes_to_read_from_receive_buffer = bytes_available_in_receive_buffer;
 	}
 	else
 	{
 		bytes_to_read_from_receive_buffer = buffer_length;
 	}
 
-	bytes_available_in_receive_buffer_1 -= bytes_to_read_from_receive_buffer;
+	bytes_available_in_receive_buffer -= bytes_to_read_from_receive_buffer;
 
 	__HAL_DMA_ENABLE_IT(&hdma_usart1_rx, DMA_IT_TC);
 
@@ -176,7 +186,7 @@ void HAL_UART_IRQHandler_2(UART_HandleTypeDef *huart)
     	bytes_available_in_receive_fifo = RECEIVE_FIFO_SIZE -
     										hdma_usart1_rx.Instance->CNDTR -
 											bytes_aleady_copied_out_of_receive_fifo;
-    	bytes_available_in_receive_buffer_1 += bytes_available_in_receive_fifo;
+    	bytes_available_in_receive_buffer += bytes_available_in_receive_fifo;
 
     	for (i = 0U; i < bytes_available_in_receive_fifo; i++)
     	{
