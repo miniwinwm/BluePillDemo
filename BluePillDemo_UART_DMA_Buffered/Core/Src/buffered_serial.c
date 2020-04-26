@@ -189,7 +189,9 @@ void HAL_UART_IRQHandler_2(UART_HandleTypeDef *huart)
     	}
 
     	bytes_aleady_copied_out_of_receive_fifo += bytes_available_in_receive_fifo;
-    	(void)__HAL_UART_GET_FLAG(huart, UART_FLAG_IDLE);
+
+    	// clear the IDLE flag in SR register according to section 27.6.1 of ST document RM0008
+    	(void)huart->Instance->SR;
     	(void)huart->Instance->DR;
 	}
 }
