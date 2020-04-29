@@ -21,7 +21,7 @@ ModemStatus_t ModemInit(void)
 		HAL_Delay(100U);
 
 		serial_read_data(20U, init_response);
-		if (memcmp(init_response, "ATE1\r\r\nOK\r\n", 16))
+		if (memcmp(init_response, "ATE1\r\r\nOK\r\n", 11) == 0)
 		{
 			return MODEM_OK;
 		}
