@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "stm32f1xx_hal.h"
 #include "modem.h"
 #include "buffered_serial.h"
@@ -206,21 +207,6 @@ ModemStatus_t ModemHello(void)
 	return SendBasicCommandResponse("AT", 1000U);
 }
 
-ModemStatus_t ModemSetSMSTextMode(void)
-{
-	return SendBasicCommandResponse("AT+CMGF=1", 1000U);
-}
-
-ModemStatus_t ModemDisableNewSMSNotification(void)
-{
-	return SendBasicCommandResponse("AT+CNMI=0", 1000U);
-}
-
-ModemStatus_t ModemDeleteAllReadAndSentSMS(void)
-{
-	return SendBasicCommandResponse("AT+CMGD=1,2", 1000U);
-}
-
 ModemStatus_t ModemGetSignalStrength(uint8_t *strength)
 {
 	ModemStatus_t status;
@@ -263,199 +249,234 @@ ModemStatus_t ModemGetNetworkRegistered(bool *registered)
 	return status;
 }
 
-ModemStatus_t ModemSendSMS(char *address, char *message)
+ModemStatus_t ModemHttpInit(char *apn, char *username, char *password)
 {
-	uint8_t i = 0U;
-	uint32_t startTime = HAL_GetTick();
 	ModemStatus_t status;
-	char prompt;
-	char newline;
-	char response[20];
-	char command[25];
+	char atCommand[100];
 
-	if (address == NULL || message == NULL || strlen(message) > 160)
-	{
-		return MODEM_BAD_PARAMETER;
-	}
-
-	strcpy(command, "AT+CMGS=\"");
-	strcat(command, address);
-	strcat(command, "\"\r");
-	serial_write_data(strlen(command), (uint8_t *)command);
-
-	status = GetEcho(command, 1000U);
+	// set connection type to gprs
+	status = SendBasicCommandResponse("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"", 1000U);
 	if (status != MODEM_OK)
 	{
 		return status;
 	}
 
+	// send apn
+	strcpy(atCommand, "AT+SAPBR=3,1,\"APN\",\"");
+	strcat(atCommand, apn);
+	strcat(atCommand,"\"");
+	status = SendBasicCommandResponse(atCommand, 1000U);
+	if (status != MODEM_OK)
+	{
+		return status;
+	}
+
+	// send user name
+	strcpy(atCommand, "AT+SAPBR=3,1,\"USER\",\"");
+	strcat(atCommand, username);
+	strcat(atCommand,"\"");
+	status = SendBasicCommandResponse(atCommand, 1000U);
+	if (status != MODEM_OK)
+	{
+		return status;
+	}
+
+	// send password
+	strcpy(atCommand, "AT+SAPBR=3,1,\"PWD\",\"");
+	strcat(atCommand, password);
+	strcat(atCommand,"\"");
+	status = SendBasicCommandResponse(atCommand, 1000U);
+	if (status != MODEM_OK)
+	{
+		return status;
+	}
+
+	// open bearer
+	status = SendBasicCommandResponse("AT+SAPBR=1,1", 5000U);
+	if (status != MODEM_OK)
+	{
+		return status;
+	}
+
+	// init http service
+	return SendBasicCommandResponse("AT+HTTPINIT", 1000U);
+}
+
+ModemStatus_t ModemHttpClose(void)
+{
+	return SendBasicCommandResponse("AT+SAPBR=0,1", 5000U);
+}
+
+ModemStatus_t ModemHttpSendURL(char *url)
+{
+	char atCommand[256];
+
+	if (strlen(url) > 230)
+	{
+		return MODEM_OVERFLOW;
+	}
+
+	strcpy(atCommand, "AT+HTTPPARA=\"URL\",\"");
+	strcat(atCommand, url);
+	strcat(atCommand,"\"");
+	return SendBasicCommandResponse(atCommand, 1000U);
+}
+
+ModemStatus_t ModemHttpSendAction(HttpAction_t httpAction, uint16_t *httpResponseCode, uint16_t *responseLength)
+{
+	char atCommand[30];
+	char atResponse[30];
+	uint8_t i;
+	uint32_t startTime = HAL_GetTick();
+	ModemStatus_t status;
+
+	strcpy(atCommand, "AT+HTTPACTION=");
+	itoa(httpAction, atCommand + 14, 10);
+	status = SendBasicCommandResponse(atCommand, 1000U);
+	if (status != MODEM_OK)
+	{
+		return status;
+	}
+
+	// get blank line
+	i = 0U;
 	while (true)
 	{
 		if (serial_received_bytes_waiting() > 0U)
 		{
-			serial_read_data(1U, (uint8_t *)&prompt);
-			if (prompt == '>')
+			serial_read_data(1U, (uint8_t *)&atResponse[i]);
+			if (atResponse[i] == '\n')
 			{
 				break;
 			}
-			else
+			i++;
+			if (i > 30U)
 			{
 				return MODEM_UNEXPECTED_RESPONSE;
 			}
 		}
 		else
 		{
-			if (HAL_GetTick() > startTime + 1000U)
+			if (HAL_GetTick() > startTime + 10000U)
 			{
 				return MODEM_TIMEOUT;
 			}
 		}
 	}
 
-	serial_write_data(strlen(message), (uint8_t *)message);
-	serial_write_data(1U, (uint8_t *)"\x1a");
-
+	// get response
+	i = 0U;
 	while (true)
 	{
 		if (serial_received_bytes_waiting() > 0U)
 		{
-			serial_read_data(1U, (uint8_t *)&newline);
-			if (newline == '\n')
-			{
-				break;
-			}
-		}
-		else
-		{
-			if (HAL_GetTick() > startTime + 5000U)
-			{
-				return MODEM_TIMEOUT;
-			}
-		}
-	}
-
-	while (true)
-	{
-		if (serial_received_bytes_waiting() > 0U)
-		{
-			serial_read_data(1U, (uint8_t *)&response[i]);
-			if (response[i] == '\n')
+			serial_read_data(1U, (uint8_t *)&atResponse[i]);
+			if (atResponse[i] == '\n')
 			{
 				break;
 			}
 			i++;
-
-			if (i == 20U)
+			if (i > 30U)
 			{
-				return MODEM_OVERFLOW;
+				return MODEM_UNEXPECTED_RESPONSE;
 			}
 		}
 		else
 		{
-			if (HAL_GetTick() > startTime + 5000U)
+			if (HAL_GetTick() > startTime + 10000U)
 			{
 				return MODEM_TIMEOUT;
 			}
 		}
 	}
 
-	return GetStandardResponse(1000U);
+	if (sscanf(atResponse, "+HTTPACTION: 0,%hu,%hu", httpResponseCode, responseLength) != 2)
+	{
+		return MODEM_UNEXPECTED_RESPONSE;
+	}
+
+	return MODEM_OK;
 }
 
-ModemStatus_t ModemListAllUnreadSMS(new_sms_callback_t new_sms_callback)
+ModemStatus_t ModemHttpReadResponse(uint16_t startPosition, uint16_t length, uint8_t *responseBuffer)
 {
-	char response[100];
-	uint8_t i;
+	char atCommand[30];
+	char atResponse[30];
 	ModemStatus_t status;
-	SmsMessage_t smsMessage;
 	uint32_t startTime = HAL_GetTick();
+	uint8_t i;
+	uint16_t bytesRead = 0U;
 
-	serial_write_data(22U, (uint8_t *)"AT+CMGL=\"REC UNREAD\"\r\n");
+	strcpy(atCommand, "AT+HTTPREAD=");
+	itoa(startPosition, atCommand + strlen(atCommand), 10);
+	strcat(atCommand, ",");
+	itoa(length, atCommand + strlen(atCommand), 10);
 
-	status = GetEcho("AT+CMGL=\"REC UNREAD\"", 1000U);
+	serial_write_data(strlen(atCommand), (uint8_t *)atCommand);
+	serial_write_data(1U, (uint8_t *)"\r");
+
+	status = GetEcho(atCommand, 100U);
 	if (status != MODEM_OK)
 	{
 		return status;
 	}
 
+	// get bytes read response
+	i = 0U;
 	while (true)
 	{
-		i = 0U;
-		while (true)
+		if (serial_received_bytes_waiting() > 0U)
 		{
-			if (serial_received_bytes_waiting() > 0U)
+			serial_read_data(1U, (uint8_t *)&atResponse[i]);
+			if (atResponse[i] == '\n')
 			{
-				serial_read_data(1U, (uint8_t *)&response[i]);
-				if (response[i] == '\n')
-				{
-					if (memcmp(response, "OK\r\n", 4) == 0)
-					{
-						return MODEM_OK;
-					}
-					else if (memcmp(response, "ERROR\r\n", 7) == 0)
-					{
-						return MODEM_ERROR;
-					}
-					else if (memcmp(response, "\r\n", 2) == 0)
-					{
-						i = 0U;
-						continue;
-					}
-					else
-					{
-						strtok(response, "\"");
-						strtok(NULL, "\"");
-						strtok(NULL, "\"");
-						strcpy(smsMessage.from, strtok(NULL, "\""));
-						strtok(NULL, "\"");
-						strtok(NULL, "\"");
-						strcpy(smsMessage.date, strtok(NULL, ","));
-						strcpy(smsMessage.time, strtok(NULL, "\""));
-						break;
-					}
-				}
-				i++;
-				if (i == 100)
-				{
-					return MODEM_OVERFLOW;
-				}
+				break;
 			}
-			else
+			i++;
+			if (i > 30U)
 			{
-				if (HAL_GetTick() > startTime + 1000U)
-				{
-					return MODEM_TIMEOUT;
-				}
+				return MODEM_UNEXPECTED_RESPONSE;
 			}
 		}
-
-		i = 0U;
-		while (true)
+		else
 		{
-			if (serial_received_bytes_waiting() > 0U)
+			if (HAL_GetTick() > startTime + 10000U)
 			{
-				serial_read_data(1U, (uint8_t *)&smsMessage.text[i]);
-				if (smsMessage.text[i] == '\n')
-				{
-					smsMessage.text[i] = '\0';
-					new_sms_callback(&smsMessage);
-					break;
-				}
-				i++;
-				if (i == 160)
-				{
-					return MODEM_OVERFLOW;
-				}
-			}
-			else
-			{
-				if (HAL_GetTick() > startTime + 1000U)
-				{
-					return MODEM_TIMEOUT;
-				}
+				return MODEM_TIMEOUT;
 			}
 		}
 	}
 
-	return MODEM_OK;
+	// check bytes read response
+	if (sscanf(atResponse, "+HTTPREAD: %hu", &bytesRead) != 1)
+	{
+		return MODEM_UNEXPECTED_RESPONSE;
+	}
+	if (bytesRead != length)
+	{
+		return MODEM_UNEXPECTED_RESPONSE;
+	}
+
+	// get http response
+	bytesRead = 0U;
+	while (true)
+	{
+		bytesRead += serial_read_data(length - bytesRead, responseBuffer + bytesRead);
+		if (bytesRead == length)
+		{
+			break;
+		}
+
+		if (HAL_GetTick() > startTime + 10000U)
+		{
+			return MODEM_TIMEOUT;
+		}
+	}
+
+	return GetStandardResponse(100U);
+}
+
+ModemStatus_t ModemDisableNewSMSNotification(void)
+{
+	return SendBasicCommandResponse("AT+CNMI=0", 1000U);
 }
