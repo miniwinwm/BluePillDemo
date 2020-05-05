@@ -24,7 +24,7 @@ static void ServerPowerDown(uint32_t timeoutMs);
 
 // urc
 static void ServerHandleURC(void);
-bool tcpConnectedState = false;
+static bool tcpConnectedState = false;
 
 // utility functions
 static ModemStatus_t ServerSendBasicCommandResponse(char *command, uint32_t timeoutMs);
@@ -34,7 +34,7 @@ static ModemStatus_t ServerGetStandardResponse(uint32_t timeoutMs);
 static ModemStatus_t ClientSendBasicCommandResponse(AtCommand_t atCommand, uint32_t timeoutMs);
 static ModemStatus_t ClientTcpWriteSection(const uint8_t *data, uint8_t length, uint32_t timeoutMs);
 static ModemStatus_t ClientTcpReadSection(uint8_t lengthToRead, uint8_t *lengthRead, uint8_t *buffer, uint32_t timeoutMs);
-static void FlushReadBufferOnError(ModemStatus_t modemStatus);
+static void ServerFlushReadBufferOnError(ModemStatus_t modemStatus);
 
 // server objects
 static uint8_t echoOrUrc[MODEM_MAX_AT_COMMAND_SIZE];
@@ -289,7 +289,7 @@ static ModemStatus_t ServerSendBasicCommandTextResponse(char *command, char *res
 	return ServerGetStandardResponse(timeoutMs);
 }
 
-static void FlushReadBufferOnError(ModemStatus_t modemStatus)
+static void ServerFlushReadBufferOnError(ModemStatus_t modemStatus)
 {
 	uint8_t byte;
 
@@ -477,7 +477,7 @@ ModemStatus_t ModemHello(uint32_t timeoutMs)
 static void ServerModemHello(uint32_t timeoutMs)
 {
 	atResponsePacket.atResponse = ServerSendBasicCommandResponse("AT", timeoutMs);
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -536,7 +536,7 @@ static void ServerGetSignalStrength(uint32_t timeoutMs)
 			memcpy(atResponsePacket.data, &signalStrengthResponseData, sizeof(signalStrengthResponseData));
 		}
 	}
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -605,7 +605,7 @@ static void ServerNetworkRegistrationStatus(uint32_t timeoutMs)
 		}
 	}
 
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
@@ -620,7 +620,7 @@ ModemStatus_t ModemSetManualDataRead(uint32_t timeoutMs)
 static void ServerSetManualDataReceive(uint32_t timeoutMs)
 {
 	atResponsePacket.atResponse = ServerSendBasicCommandResponse("AT+CIPRXGET=1", timeoutMs);
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -634,7 +634,7 @@ ModemStatus_t ModemPowerDown(uint32_t timeoutMs)
 static void ServerPowerDown(uint32_t timeoutMs)
 {
 	atResponsePacket.atResponse = ServerSendBasicCommandResponse("AT+CPOWD=1", timeoutMs);
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -648,7 +648,7 @@ ModemStatus_t ModemActivateDataConnection(uint32_t timeoutMs)
 static void ServerActivateDataConnection(uint32_t timeoutMs)
 {
 	atResponsePacket.atResponse = ServerSendBasicCommandResponse("AT+CIICR", timeoutMs);
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -712,7 +712,7 @@ static void ServerConfigureDataConnection(uint32_t timeoutMs)
 	strcat(atCommandBuf, "\"\r");
 
 	atResponsePacket.atResponse = ServerSendBasicCommandResponse(atCommandBuf, timeoutMs);
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -726,7 +726,7 @@ ModemStatus_t ModemDeactivateDataConnection(uint32_t timeoutMs)
 static void ServerDeactivateDataConnection(uint32_t timeoutMs)
 {
 	atResponsePacket.atResponse = ServerSendBasicCommandResponse("AT+CIPSHUT", timeoutMs);
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -811,7 +811,7 @@ static void ServerOpenTcpConnection(uint32_t timeoutMs)
 	strcat(atCommandBuf, "\"\r");
 
 	atResponsePacket.atResponse = ServerSendBasicCommandResponse(atCommandBuf, timeoutMs);
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -848,7 +848,7 @@ static void ServerCloseTcpConnection(uint32_t timeoutMs)
 	{
 		tcpConnectedState = false;
 	}
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -932,7 +932,7 @@ static void ServerGetOwnIpAddress(uint32_t timeoutMs)
 	}
 
 	atResponsePacket.atResponse = modemStatus;
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -1106,7 +1106,7 @@ static void ServerTcpWrite(uint32_t timeoutMs)
 	}
 
 	atResponsePacket.atResponse = modemStatus;
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -1165,7 +1165,7 @@ static void ServerGetTcpReadDataWaitingLength(uint32_t timeoutMs)
 			memcpy(atResponsePacket.data, &getTcpReadDataWaitinghResponseData, sizeof(getTcpReadDataWaitinghResponseData));
 		}
 	}
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
@@ -1353,7 +1353,7 @@ static void ServerTcpRead(uint32_t timeoutMs)
 	}
 
 	atResponsePacket.atResponse = modemStatus;
-	FlushReadBufferOnError(atResponsePacket.atResponse);
+	ServerFlushReadBufferOnError(atResponsePacket.atResponse);
 	osMessageQueuePut(responseQueueHandle, &atResponsePacket, 0U, 0U);
 }
 
