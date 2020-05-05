@@ -157,11 +157,11 @@ modem and a Raspberry Pi!
 
 This is example code and may not be entirely robust. Little account of overflow
 handling is provided and this code may fall over terminally if too many messages
-are sent. Aspects of MQTT available are limited - no QoS 1 or 2, no retained message
-capability etc. There is no security over the TCP connection. If it is used in
-any commercial or real life project then it is at your own risk. It is suitable for 
-demonstration, learning, non-critical maker projects or just to fill your time
-until COVID-19 lockdown is over (as it has mine).
+are sent. Aspects of MQTT available are limited - no QoS 1 or 2. There is no 
+security over the TCP connection. If it is used in any commercial or real life 
+project then it is at your own risk. It is suitable for demonstration, learning, 
+non-critical maker projects or just to fill your time until COVID-19 lockdown is 
+over (as it has mine).
 
 ---- MQTT PART END ----
 
