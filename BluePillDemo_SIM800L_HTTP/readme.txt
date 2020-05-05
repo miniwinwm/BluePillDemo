@@ -47,9 +47,10 @@ The example code in main establishes a GPRS connection and initialses the HTTP s
 on the modem. It then sends a HTTP GET command and checks the response code of any response.
 It also reads the length of the response and uses that length to download the response 
 from the modem into a dynamically allocated buffer. The contents of the response are
-sent out of USART2 and then the HTTP connection is closed. You need to set you 
-Access point Name, user name (if any) and password (if any) for your SIM at the top of
-main.c.
+sent out of USART2 and then the HTTP connection is closed. 
+
+You need to set your access point name, user name (if any) and password (if any) for 
+your SIM at the top of main.c.
 
 Schematic provided. Check the voltage output from the regulator before connecting
 it to the modem!
