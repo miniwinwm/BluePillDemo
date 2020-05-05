@@ -289,12 +289,37 @@ ModemStatus_t ModemSendSMS(char *address, char *message)
 		return status;
 	}
 
+	// get first character of prompt '>'
 	while (true)
 	{
 		if (serial_received_bytes_waiting() > 0U)
 		{
 			serial_read_data(1U, (uint8_t *)&prompt);
 			if (prompt == '>')
+			{
+				break;
+			}
+			else
+			{
+				return MODEM_UNEXPECTED_RESPONSE;
+			}
+		}
+		else
+		{
+			if (HAL_GetTick() > startTime + 1000U)
+			{
+				return MODEM_TIMEOUT;
+			}
+		}
+	}
+
+	// get second character of prompt ' '
+	while (true)
+	{
+		if (serial_received_bytes_waiting() > 0U)
+		{
+			serial_read_data(1U, (uint8_t *)&prompt);
+			if (prompt == ' ')
 			{
 				break;
 			}
