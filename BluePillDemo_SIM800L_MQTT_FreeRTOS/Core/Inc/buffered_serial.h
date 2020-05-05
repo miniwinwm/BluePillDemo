@@ -45,9 +45,4 @@ uint16_t serial_received_bytes_waiting(void);
  */
 uint16_t serial_send_bytes_space(void);
 
-/**
- * Called by the driver not the user
- */
-void HAL_UART_IRQHandler_2(UART_HandleTypeDef *huart);
-
 #endif
