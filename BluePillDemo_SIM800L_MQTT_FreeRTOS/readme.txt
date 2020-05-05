@@ -3,10 +3,10 @@ using its AT command interface. The example provides an interface to allow a MQT
 to connect with a MQTT broker, publish messages, subscribe to topics and receive
 incoming published messages from the broker. This example builds on project 
 BluePillDemo_SIM800L_TCP_FreeRTOS which implements a TCP connection and uses the same
-modem driver. A MQTT layer is added which uses the modem's TCP API.
+modem driver. A MQTT layer is added which uses the modem's TCP AT commands.
 
-Only a subset of MQTT is implemented in this example. Only QoS 0 messages and their
-responses are handled. This still allows 2 way message transfer but no guarantee of
+Only a subset of MQTT is implemented in this example. QoS 0 messages and their responses 
+are handled, but no higher. This still allows 2 way message transfer but no guarantee of
 delivery is available (fire and forget only). Ping is implemented to allow long-lived 
 connections to remain alive.
 
@@ -148,8 +148,8 @@ has now been unsubscribed from there should be no incoming publish.
 - The connection to the MQTT broker is closed, the TCP connection is closed, the 
 modem is powered down.
 
-The buffers for the serial port (and thence the TCP connection) are only small as 
-the BluePill's processor is only small. Therefore this code is only suitable for
+The buffers for the serial port (and thence the TCP connection) are small as 
+the BluePill's processor is small. Therefore this code is only suitable for
 sending MQTT messages up to a few 10's of bytes in size. The GPRS connection is
 also slow and messages need to be sent slowly within the capabilities of the GSM
 connection. If you need to send kilobyes of data at megabits of speed get a 4G
@@ -157,7 +157,7 @@ modem and a Raspberry Pi!
 
 This is example code and may not be entirely robust. Little account of overflow
 handling is provided and this code may fall over terminally if too many messages
-are sent. Aspects of MQTT available are limited - no QoS1 or 2, no retained message
+are sent. Aspects of MQTT available are limited - no QoS 1 or 2, no retained message
 capability etc. There is no security over the TCP connection. If it is used in
 any commercial or real life project then it is at your own risk. It is suitable for 
 demonstration, learning, non-critical maker projects or just to fill your time
