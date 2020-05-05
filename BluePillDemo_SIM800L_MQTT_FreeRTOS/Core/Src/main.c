@@ -445,13 +445,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void vApplicationStackOverflowHook( TaskHandle_t xTask,
-                                    signed char *pcTaskName )
-{
-	while (true)
-	{
-	}
-}
 
 /* USER CODE END 4 */
 
