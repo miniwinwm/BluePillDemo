@@ -40,6 +40,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ACCESS_POINT_NAME		"everywhere"
+#define USER_NAME				"eesecure"
+#define PASSWORD				"secure"
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -494,7 +498,7 @@ void mainTask(void *argument)
 	  ModemDebugPrintStatus("->4 Set manual read", modemStatus);
 
 	  DebugPrint("5 Configuring data connection\r\n");
-	  modemStatus = ModemConfigureDataConnection("everywhere", "eesecure", "secure", 200UL);
+	  modemStatus = ModemConfigureDataConnection(ACCESS_POINT_NAME, USER_NAME, PASSWORD, 250UL);
 	  ModemDebugPrintStatus("->5 Configure data connection", modemStatus);
 
 	  DebugPrint("6 Activating data connection\r\n");
