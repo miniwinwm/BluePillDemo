@@ -1,5 +1,5 @@
 This example uses the Blue Pill board to drive a SIM800L GSM modem on a development board
-using its AT command interface. This example provides an interface to allow a TCP client
+using its AT command interface. The example provides an interface to allow a TCP client
 socket to be opened and used to communicate with a TCP server.
 
 GSM modems and their interface are not simple things and as such this example is not
