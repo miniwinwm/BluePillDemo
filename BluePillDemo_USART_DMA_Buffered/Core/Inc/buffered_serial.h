@@ -3,7 +3,7 @@
 
 #include "stm32f1xx_hal.h"
 
-#define RECEIVE_BUFFER_SIZE     256U
+#define RECEIVE_BUFFER_SIZE     1024U
 #define RECEIVE_FIFO_SIZE		16U
 #define TRANSMIT_BUFFER_SIZE 	256U
 #define TRANSMIT_FIFO_SIZE 		16U
@@ -20,7 +20,7 @@ void serial_init(void);
  * @param data The bytes to send
  * @return How many bytes were transferred into the send buffer which may be less than length if the buffer is full
  */
-uint16_t serial_write_data(uint16_t length, uint8_t *data);
+uint16_t serial_write_data(uint16_t length, const uint8_t *data);
 
 /**
  * Read data from UART 0
@@ -44,10 +44,5 @@ uint16_t serial_received_bytes_waiting(void);
  * @return Number of bytes space
  */
 uint16_t serial_send_bytes_space(void);
-
-/**
- * Called by the driver not the user
- */
-void HAL_UART_IRQHandler_2(UART_HandleTypeDef *huart);
 
 #endif
