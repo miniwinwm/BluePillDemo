@@ -53,7 +53,7 @@ osThreadId_t file2Handle;
 uint32_t file2Buffer[ 640 ];
 osStaticThreadDef_t file2ControlBlock;
 /* USER CODE BEGIN PV */
-osEventFlagsId_t evt_id;
+osEventFlagsId_t modemTaskStartedEventHandle;
 
 /* USER CODE END PV */
 
@@ -111,7 +111,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
-  evt_id = osEventFlagsNew(NULL);
+  modemTaskStartedEventHandle = osEventFlagsNew(NULL);
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
@@ -302,7 +302,7 @@ void file1Task(void *argument)
   FIL fp;
 
   // signal file2Task that FatFS is initialised and file processing can begin
-  osEventFlagsSet(evt_id, 0x00000001U);
+  osEventFlagsSet(modemTaskStartedEventHandle, 0x00000001U);
 
   res = f_unlink("text.txt");
   res = f_open(&fp, "text.txt", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
@@ -336,7 +336,7 @@ void file2Task(void *argument)
   FIL fp2;
 
   // wait for file1Task to have started and completed its initialisation of FatFS and mounted drive
-  osEventFlagsWait(evt_id, 0x00000001U, osFlagsWaitAny, osWaitForever);
+  osEventFlagsWait(modemTaskStartedEventHandle, 0x00000001U, osFlagsWaitAny, osWaitForever);
 
   res = f_unlink("text2.txt");
   res = f_open(&fp2, "text2.txt", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);

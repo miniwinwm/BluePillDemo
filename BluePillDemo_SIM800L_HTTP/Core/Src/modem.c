@@ -225,7 +225,7 @@ ModemStatus_t ModemGetSignalStrength(uint8_t *strength)
 	return status;
 }
 
-ModemStatus_t ModemGetNetworkRegistered(bool *registered)
+ModemStatus_t ModemGetNetworkRegistrationStatus(bool *registered)
 {
 	ModemStatus_t status;
 	char response[20];

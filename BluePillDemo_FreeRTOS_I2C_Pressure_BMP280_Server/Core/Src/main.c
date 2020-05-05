@@ -57,7 +57,7 @@ osMessageQueueId_t pressureSensorQueueHandle;
 uint8_t pressureSensorQueueBuffer[ 1 * 8 ];
 osStaticMessageQDef_t pressureSensorQueueControlBlock;
 /* USER CODE BEGIN PV */
-osEventFlagsId_t evt_id;
+osEventFlagsId_t modemTaskStartedEventHandle;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -114,7 +114,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
-  evt_id = osEventFlagsNew(NULL);
+  modemTaskStartedEventHandle = osEventFlagsNew(NULL);
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
@@ -287,7 +287,7 @@ void mainTask(void *argument)
   pressure_sensor_data_t pressure_sensor_data;
 
   // wait for pressure sensor task to start
-  osEventFlagsWait(evt_id, 0x00000001U, osFlagsWaitAny, osWaitForever);
+  osEventFlagsWait(modemTaskStartedEventHandle, 0x00000001U, osFlagsWaitAny, osWaitForever);
 
   /* Infinite loop */
   for(;;)
@@ -320,7 +320,7 @@ void pressureSensorTask(void *argument)
   pressure_sensor_init(&hi2c1);
 
   // signal main task that this thread has started
-  osEventFlagsSet(evt_id, 0x00000001U);
+  osEventFlagsSet(modemTaskStartedEventHandle, 0x00000001U);
 
   /* Infinite loop */
   for (;;)

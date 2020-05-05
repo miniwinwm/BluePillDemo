@@ -119,7 +119,7 @@ int main(void)
   status = ModemHello();
   status = ModemDisableNewSMSNotification();
   status = ModemGetSignalStrength(&signal_strength);
-  status = ModemGetNetworkRegistered(&registered);
+  status = ModemGetNetworkRegistrationStatus(&registered);
   status = ModemHttpInit(ACCESS_POINT_NAME, USER_NAME, PASSWORD);
   status = ModemHttpSendURL("http://www.exploreembedded.com/wiki/images/1/15/Hello.txt");
   status = ModemHttpSendAction(HTTP_GET, &httpResponseCode, &responseLength);

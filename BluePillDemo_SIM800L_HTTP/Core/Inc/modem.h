@@ -25,7 +25,7 @@ typedef enum
 ModemStatus_t ModemInit(void);
 ModemStatus_t ModemHello(void);
 ModemStatus_t ModemGetSignalStrength(uint8_t *strength);
-ModemStatus_t ModemGetNetworkRegistered(bool *registered);
+ModemStatus_t ModemGetNetworkRegistrationStatus(bool *registered);
 ModemStatus_t ModemHttpInit(char *apn, char *username, char *password);
 ModemStatus_t ModemHttpClose(void);
 ModemStatus_t ModemHttpSendURL(char *url);

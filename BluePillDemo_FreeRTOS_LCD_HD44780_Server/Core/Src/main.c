@@ -55,7 +55,7 @@ osMessageQueueId_t lcdQueueHandle;
 uint8_t lcdBuffer[ 6 * sizeof( lcd_packet_t ) ];
 osStaticMessageQDef_t lcdControlBlock;
 /* USER CODE BEGIN PV */
-osEventFlagsId_t evt_id;
+osEventFlagsId_t modemTaskStartedEventHandle;
 
 static const uint8_t custom_characters[] = {0x04, 0x0a, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00,
 												0x0e, 0x06, 0x0a, 0x10, 0x10, 0x11, 0x0e, 0x00,
@@ -121,7 +121,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
-  evt_id = osEventFlagsNew(NULL);
+  modemTaskStartedEventHandle = osEventFlagsNew(NULL);
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
@@ -290,7 +290,7 @@ void mainTask(void *argument)
   /* USER CODE BEGIN 5 */
 
   // wait for lcd task to start
-  osEventFlagsWait(evt_id, 0x00000001U, osFlagsWaitAny, osWaitForever);
+  osEventFlagsWait(modemTaskStartedEventHandle, 0x00000001U, osFlagsWaitAny, osWaitForever);
 
   /* Infinite loop */
   for(;;)
@@ -319,7 +319,7 @@ void lcdTask(void *argument)
   uint8_t i;
 
   // signal main task that this thread has started
-  osEventFlagsSet(evt_id, 0x00000001U);
+  osEventFlagsSet(modemTaskStartedEventHandle, 0x00000001U);
 
   /* Infinite loop */
   for (;;)

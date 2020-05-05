@@ -127,7 +127,7 @@ int main(void)
   status = ModemSetSMSTextMode();
   status = ModemDisableNewSMSNotification();
   status = ModemGetSignalStrength(&signal_strength);
-  status = ModemGetNetworkRegistered(&registered);
+  status = ModemGetNetworkRegistrationStatus(&registered);
   status = ModemSendSMS(PHONE_NUMBER, "Blue Pill");
   status = ModemDeleteAllReadAndSentSMS();
 

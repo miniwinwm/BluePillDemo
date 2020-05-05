@@ -29,7 +29,7 @@ ModemStatus_t ModemInit(void);
 ModemStatus_t ModemHello(void);
 ModemStatus_t ModemSetSMSTextMode(void);
 ModemStatus_t ModemGetSignalStrength(uint8_t *strength);
-ModemStatus_t ModemGetNetworkRegistered(bool *registered);
+ModemStatus_t ModemGetNetworkRegistrationStatus(bool *registered);
 ModemStatus_t ModemDisableNewSMSNotification(void);
 ModemStatus_t ModemSendSMS(char *address, char *message);
 ModemStatus_t ModemListAllUnreadSMS(new_sms_callback_t new_sms_callback);
