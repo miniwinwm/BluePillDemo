@@ -547,10 +547,10 @@ void mainTask(void *argument)
 	  }
 	  DebugPrint("->10 MQTT ping response received\r\n");
 
-	  // subscribe to angusmcdoon@gmail.com/fred
-	  DebugPrint("11 Subscribing to angusmcdoon@gmail.com/fred\r\n");
+	  // subscribe to BluePillDemo/test1
+	  DebugPrint("11 Subscribing to BluePillDemo/test1\r\n");
 	  subscribeResponseReceived = false;
-	  mqttStatus = MqttSubscribe("angusmcdoon@gmail.com/fred", 0x0001U, 5000UL);
+	  mqttStatus = MqttSubscribe("BluePillDemo/test1", 0x0001U, 5000UL);
 	  MqttDebugPrintStatus("->11 MQTT subscribe", mqttStatus);
 
 	  while (true)
@@ -576,9 +576,9 @@ void mainTask(void *argument)
 
 		  if (loops == 10U)
 		  {
-			  // publish to angusmcdoon@gmail.com/fred
-			  DebugPrint("13 Publishing to angusmcdoon@gmail.com/fred\r\n");
-			  mqttStatus = MqttPublish("angusmcdoon@gmail.com/fred", (uint8_t *)"nodules", 7U, false, 5000UL);
+			  // publish to BluePillDemo/test1
+			  DebugPrint("13 Publishing to BluePillDemo/test1\r\n");
+			  mqttStatus = MqttPublish("BluePillDemo/test1", (uint8_t *)"42", 2U, false, 5000UL);
 			  MqttDebugPrintStatus("13-> MQTT publish", mqttStatus);
 		  }
 
@@ -610,10 +610,10 @@ void mainTask(void *argument)
 	  }
 	  DebugPrint("->14 MQTT ping response received\r\n");
 
-	  // unsubscribe to angusmcdoon@gmail.com/fred
-	  DebugPrint("15 Unsubscribing to angusmcdoon@gmail.com/fred\r\n");
+	  // unsubscribe to BluePillDemo/test1
+	  DebugPrint("15 Unsubscribing to BluePillDemo/test1\r\n");
 	  unsubscribeResponseReceived = false;
-	  mqttStatus = MqttUnsubscribe("angusmcdoon@gmail.com/fred", 0x0002U, 5000UL);
+	  mqttStatus = MqttUnsubscribe("BluePillDemo/test1", 0x0002U, 5000UL);
 	  MqttDebugPrintStatus("->15 MQTT unsubscribe", mqttStatus);
 
 	  while (true)
@@ -639,9 +639,9 @@ void mainTask(void *argument)
 
 		  if (loops == 5U)
 		  {
-			  // publish to angusmcdoon@gmail.com/fred
-			  DebugPrint("17 Publishing to angusmcdoon@gmail.com/fred\r\n");
-			  mqttStatus = MqttPublish("angusmcdoon@gmail.com/fred", (uint8_t *)"1234567", 7U, false, 5000UL);
+			  // publish to BluePillDemo/test1
+			  DebugPrint("17 Publishing to BluePillDemo/test1\r\n");
+			  mqttStatus = MqttPublish("BluePillDemo/test1", (uint8_t *)"24", 2U, false, 5000UL);
 			  MqttDebugPrintStatus("17-> MQTT publish", mqttStatus);
 		  }
 
