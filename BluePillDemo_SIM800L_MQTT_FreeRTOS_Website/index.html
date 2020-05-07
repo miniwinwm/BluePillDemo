@@ -1,0 +1,106 @@
+<html>
+	<head>
+		<title>BluePillDemo</title>	
+
+    	<!–– this script does the MQTT connect and subscribe to BluePillDemo/test1 and BluePillDemo/test2 ––>
+   		<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+   		<script type = "text/javascript" language = "javascript">
+    		var mqtt;
+			var reconnectTimeout = 2000;
+			var host = "broker.hivemq.com"; 
+			var port = 8000;
+			var test1Data = "";
+			var test2Data = 0;
+		
+			// callback called when the connection to the broker has been established
+	 		function onConnect() {
+				mqtt.subscribe("BluePillDemo/test1");
+				mqtt.subscribe("BluePillDemo/test2");				
+	  		}
+	  	
+	  		// this is called by the body part of the webpage on loading
+	  		function MQTTconnect() {
+				var sessionId = generateId(20); 	// generate a 20 character unique session id used when connecting
+				mqtt = new Paho.MQTT.Client(host, port, sessionId);
+				var options = {
+					useSSL: false, 
+					timeout: 3, 
+					onSuccess: onConnect,
+					onFailure: onFailure
+				};
+				mqtt.onMessageArrived = onMessageArrived;
+				mqtt.connect(options);
+			}
+			
+			// callback called when the connection fails which reconnects after a timeout
+			function onFailure(message) {
+				setTimeout(MQTTconnect, reconnectTimeout);
+			}
+			
+			// callback called when a incoming publish arrives for a subscribed topic (destinationName)
+			function onMessageArrived(msg) {
+			    if (msg.destinationName == "BluePillDemo/test1") {
+					test1Data = msg.payloadString;
+					updateTest1();
+				}				
+				if (msg.destinationName == "BluePillDemo/test2") {
+					test2Data = msg.payloadString;					
+					updateTest2();
+				}
+			}
+						
+			// utility function for unique session id generation
+			function dec2hex (dec) {
+  				return ('0' + dec.toString(16)).substr(-2)
+			}
+
+			// utility function to generate a unique session id string
+			function generateId (len) {
+  				var arr = new Uint8Array((len || 40) / 2)
+  				window.crypto.getRandomValues(arr)
+  				return Array.from(arr, dec2hex).join('')
+			}
+			
+			// called when the check box state changes by the body part of the webpage
+			function publishTest3() {
+				if (document.getElementById("test3Check").checked == true) {
+					message = new Paho.MQTT.Message("1");
+				} else {
+					message = new Paho.MQTT.Message("0");
+				}		
+				message.destinationName = "BluePillDemo/test3";
+				mqtt.send(message);
+			}
+		</script>
+
+		<!–– this script is called when test2 changes value and changes the led image between grey/green images ––>
+		<script>
+			function updateTest2() {
+  				var image = document.getElementById('test2Image');
+  				if (test2Data == "1") {
+    			image.src = "grey_led.gif";
+  				} else {
+    			image.src = "green_led.gif";
+  				}
+			}
+		</script>
+		
+		<!–– this script is called when test1 changes value and changes the textbox contents ––>
+		<script>
+			function updateTest1() {		
+  				document.getElementById('test1TextArea').value = test1Data;
+  			}
+		</script>		
+
+  	</head>
+  	<body>
+  		<script>
+				MQTTconnect();  
+		</script>	
+		
+		<h1>BluePillDemo</h1>
+		<textarea id="test1TextArea" rows="1" cols="10"></textarea> BluePillDemo/test1<br>
+    	<img id="test2Image" src="grey_led.gif" width="25" height="30"> BluePillDemo/test2<br>
+    	<input type="checkbox" id="test3Check" onclick="publishTest3()"> BluePillDemo/test3
+  	</body>
+</html>
