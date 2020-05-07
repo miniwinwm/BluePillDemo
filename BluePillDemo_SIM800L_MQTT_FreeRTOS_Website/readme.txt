@@ -36,7 +36,7 @@ checkbox state change on the webpage be the only one) and sets the board's
 LED as required. If the potentiometer is turned to maximum and the push
 button pressed simultaneously the loop exits. There's no error checking,
 pings to prevent the broker timing out and disconnecting or attempts to
-reconnect on disconnect in oreder to keep it simple. Messages are displayed
+reconnect on disconnect in order to keep it simple. Messages are displayed
 on UART2 at 115.2 kbaud the same as other SIM800L projects.
 
 The html file can be run locally or on a webserver. It can even be run in
