@@ -20,7 +20,9 @@ no attempt to reconnect to the broker if the connection fails. This will be adde
 
 If you are going to use this for your own data you need to change the publish topic
 root part in main.c in the embedded code from BluePillDemo to something of your choosing. 
-This will become a #define in subsequent releases as the SIM card details are already.
+This is a #define at the top of main.c in the embedded code:
+
+	#define			MQTT_PUBLISH_TOPIC_ROOT		"BluePillDemo"
 
 If you want to create your own webpage to view your data you need an account on a 
 webserver that allows you to upload your own html files. https://www.000webhost.com
@@ -59,7 +61,11 @@ as this project does. The https version will not get the data from the broker. S
 appendix for an explanation.
 		
 You need to set your access point name, user name (if any) and password (if any) for 
-your SIM at the top of main.c in the embedded code.
+your SIM at the top of main.c in the embedded code. These are #define's:
+
+	#define ACCESS_POINT_NAME			"everywhere"
+	#define USER_NAME					"eesecure"
+	#define PASSWORD					"secure"
 
 Schematic provided. Check the voltage output from the regulator before connecting
 it to the modem!

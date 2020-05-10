@@ -42,9 +42,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ACCESS_POINT_NAME		"everywhere"
-#define USER_NAME				"eesecure"
-#define PASSWORD				"secure"
+#define ACCESS_POINT_NAME			"everywhere"
+#define USER_NAME					"eesecure"
+#define PASSWORD					"secure"
+#define MQTT_PUBLISH_TOPIC_ROOT		"BluePillDemo"
 
 /* USER CODE END PD */
 
@@ -623,29 +624,10 @@ void mainTask(void *argument)
 	}
   }
 
-  // subscribe to BluePillDemo/test3
-  subscribeResponseReceived = false;
-  mqttStatus = MqttSubscribe("BluePillDemo/test3", 0x0001U, 5000UL);
-  MqttDebugPrintStatus("3MQTT subscribe", mqttStatus);
-
+  // go into main loop
   while (true)
   {
-    mqttStatus = MqttHandleResponse(5000UL);
-    MqttDebugPrintStatus("MQTT subscribe handle response", mqttStatus);
-
-    if (subscribeResponseReceived)
-    {
-	  break;
-    }
-    osDelay(1000UL);
-  }
-  DebugPrint("MQTT subscribe response received\r\n");
-
-
-  // go into main loop breaking if ADC scaled value is > 95 && push button pressed
-  while (true)
-  {
-	// go into wait loop checking for responses
+	// go into wait loop checking for incoming seatalk messages and incoming MQTT responses
 	startTime = osKernelGetTickCount();
 	uint8_t i = 0U;
 	while (true)
@@ -673,42 +655,42 @@ void mainTask(void *argument)
     {
       sogReceived = false;
       MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_speed_over_ground_data_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/sog", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/sog", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (depthReceived)
     {
 	  depthReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_depth_data_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/depth", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/depth", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (boatspeedReceived)
     {
 	  boatspeedReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_boat_speed_data_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/boatspeed", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/boatspeed", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (awaReceived)
     {
 	  awaReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%.0f", seatalk_apparent_wind_angle_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/awa", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/awa", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (awsReceived)
     {
 	  awsReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_apparent_wind_speed_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/aws", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/aws", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (cogReceived)
     {
 	  cogReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%hu", seatalk_course_over_ground_data_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/cog", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/cog", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (heading1Received || heading2Received)
@@ -716,30 +698,30 @@ void mainTask(void *argument)
 	  heading1Received = false;
 	  heading2Received = false;
 	  snprintf(buf, sizeof(buf), "%hu", seatalk_heading_magnetic_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/heading", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/heading", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (tripReceived)
     {
 	  tripReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_trip_data_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/trip", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/trip", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (logReceived)
     {
       logReceived = false;
       MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_log_data_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/log", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/log", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (twasReceived)
     {
 	  twasReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%.0f", seatalk_true_wind_angle_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
 	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_true_wind_speed_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (latReceived)
@@ -756,7 +738,7 @@ void mainTask(void *argument)
       }
 	  latReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%f", latitude);
-  	  mqttStatus = MqttPublish("BluePillDemo/lat", (uint8_t *)buf, strlen(buf), false, 5000UL);
+  	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/lat", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (longReceived)
@@ -773,14 +755,14 @@ void mainTask(void *argument)
 	  }
 	  longReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%f", longitude);
-	  mqttStatus = MqttPublish("BluePillDemo/long", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/long", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
 
     if (tempReceived)
     {
 	  tempReceived = false;
 	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_temperature_data_retrieve());
-	  mqttStatus = MqttPublish("BluePillDemo/temp", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/temp", (uint8_t *)buf, strlen(buf), false, 5000UL);
     }
   }
 
