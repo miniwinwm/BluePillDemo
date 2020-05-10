@@ -25,6 +25,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include "task.h"
 #include "modem.h"
@@ -42,10 +44,12 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ACCESS_POINT_NAME			"everywhere"
-#define USER_NAME					"eesecure"
-#define PASSWORD					"secure"
-#define MQTT_PUBLISH_TOPIC_ROOT		"BluePillDemo"
+#define ACCESS_POINT_NAME			"everywhere"			// network settings
+#define USER_NAME					"eesecure"				// may be blank for some networks in which case change to NULL (not "NULL")
+#define PASSWORD					"secure"				// may be blank for some networks in which case change to NULL (not "NULL")
+#define MQTT_PUBLISH_TOPIC_ROOT		"BluePillDemo"			// topic root for all published values
+#define PUBLISH_PERIOD_MS			5000UL					// time in ms that changed values are published
+#define MINIMUM_REPUBLISH_TIME_MS	30000UL					// time in ms that values are republished even if unchanged
 
 /* USER CODE END PD */
 
@@ -84,21 +88,63 @@ osStaticMutexDef_t modemMutexControlBlock;
 osEventFlagsId_t modemTaskStartedEventHandle;
 static bool subscribeResponseReceived;
 static uint16_t subscribeResponsePacketIdentifier;
-bool sogReceived;
-bool depthReceived;
-bool boatspeedReceived;
-bool awaReceived;
-bool awsReceived;
-bool sogReceived;
-bool cogReceived;
-bool heading1Received;
-bool heading2Received;
-bool tripReceived;
-bool logReceived;
-bool twasReceived;
-bool latReceived;
-bool longReceived;
-bool tempReceived;
+static bool sogReceived;
+static bool depthReceived;
+static bool boatspeedReceived;
+static bool awaReceived;
+static bool awsReceived;
+static bool sogReceived;
+static bool cogReceived;
+static bool heading1Received;
+static bool heading2Received;
+static bool tripReceived;
+static bool logReceived;
+static bool twasReceived;
+static bool latReceived;
+static bool longReceived;
+static bool tempReceived;
+static float newSog;
+static float oldSog;
+static uint32_t sogLastPubTime = UINT32_MAX / 2;
+static float newDepth;
+static float oldDepth;
+static uint32_t depthLastPubTime = UINT32_MAX / 2;
+static float newBoatspeed;
+static float oldBoatspeed;
+static uint32_t boatspeedLastPubTime = UINT32_MAX / 2;
+static float newAwa;
+static float oldAwa;
+static uint32_t awaLastPubTime = UINT32_MAX / 2;
+static float newAws;
+static float oldAws;
+static uint32_t awsLastPubTime = UINT32_MAX / 2;
+static int16_t newCog;
+static int16_t oldCog;
+static uint32_t cogLastPubTime = UINT32_MAX / 2;
+static float oldTrip;
+static float newTrip;
+static uint32_t tripLastPubTime = UINT32_MAX / 2;
+static float newLog;
+static float oldLog;
+static uint32_t logLastPubTime = UINT32_MAX / 2;
+static float newTemp;
+static float oldTemp;
+static uint32_t tempLastPubTime = UINT32_MAX / 2;
+static float newTws;
+static float oldTws;
+static uint32_t twsLastPubTime = UINT32_MAX / 2;
+static float newTwa;
+static float oldTwa;
+static uint32_t twaLastPubTime = UINT32_MAX / 2;
+static float newLatitude;
+static float oldLatitude;
+static uint32_t latitudeLastPubTime = UINT32_MAX / 2;
+static float newLongitude;
+static float oldLongitude;
+static uint32_t longitudeLastPubTime = UINT32_MAX / 2;
+static float newHeading;
+static float oldHeading;
+static uint32_t headingLastPubTime = UINT32_MAX / 2;
 
 /* USER CODE END PV */
 
@@ -643,7 +689,7 @@ void mainTask(void *argument)
 			MqttHandleResponse(5000UL);
 	    }
 
-		if (osKernelGetTickCount() > startTime + 5000UL)
+		if (osKernelGetTickCount() > startTime + PUBLISH_PERIOD_MS)
 		{
 			break;
 		}
@@ -654,120 +700,201 @@ void mainTask(void *argument)
     if (sogReceived)
     {
       sogReceived = false;
-      MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_speed_over_ground_data_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/sog", (uint8_t *)buf, strlen(buf), false, 5000UL);
+      newSog = seatalk_speed_over_ground_data_retrieve();
+      if (oldSog != newSog && (osKernelGetTickCount() - sogLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+      {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newSog);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/sog", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldSog = newSog;
+		  sogLastPubTime = osKernelGetTickCount();
+      }
     }
 
     if (depthReceived)
     {
 	  depthReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_depth_data_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/depth", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  newDepth = seatalk_depth_data_retrieve();
+	  if (oldDepth != newDepth && (osKernelGetTickCount() - depthLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newDepth);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/depth", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldDepth = newDepth;
+		  depthLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (boatspeedReceived)
     {
 	  boatspeedReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_boat_speed_data_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/boatspeed", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  newBoatspeed = seatalk_boat_speed_data_retrieve();
+	  if (newBoatspeed != oldBoatspeed && (osKernelGetTickCount() - boatspeedLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newBoatspeed);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/boatspeed", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldBoatspeed = newBoatspeed;
+		  boatspeedLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (awaReceived)
     {
 	  awaReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%.0f", seatalk_apparent_wind_angle_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/awa", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  newAwa = seatalk_apparent_wind_angle_retrieve();
+	  if (newAwa != oldAwa && (osKernelGetTickCount() - awaLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.0f", newAwa);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/awa", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldAwa = newAwa;
+		  awaLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (awsReceived)
     {
 	  awsReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_apparent_wind_speed_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/aws", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  newAws = seatalk_apparent_wind_speed_retrieve();
+	  if (newAws != oldAws && (osKernelGetTickCount() - awsLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newAws);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/aws", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldAws = newAws;
+		  awsLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (cogReceived)
     {
 	  cogReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%hu", seatalk_course_over_ground_data_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/cog", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  newCog = seatalk_course_over_ground_data_retrieve();
+	  if (newCog != oldCog && (osKernelGetTickCount() - cogLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%hu", newCog);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/cog", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldCog = newCog;
+		  cogLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (heading1Received || heading2Received)
     {
 	  heading1Received = false;
 	  heading2Received = false;
-	  snprintf(buf, sizeof(buf), "%hu", seatalk_heading_magnetic_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/heading", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  newHeading = seatalk_heading_magnetic_retrieve();
+	  if (newHeading != oldHeading && (osKernelGetTickCount() - headingLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  snprintf(buf, sizeof(buf), "%hu", newHeading);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/heading", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldHeading = newHeading;
+		  headingLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (tripReceived)
     {
 	  tripReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_trip_data_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/trip", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  newTrip = seatalk_trip_data_retrieve();
+	  if (newTrip != oldTrip && (osKernelGetTickCount() - tripLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTrip);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/trip", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldTrip = newTrip;
+		  tripLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (logReceived)
     {
       logReceived = false;
-      MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_log_data_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/log", (uint8_t *)buf, strlen(buf), false, 5000UL);
+      newLog = seatalk_log_data_retrieve();
+      if (newLog != oldLog && (osKernelGetTickCount() - logLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+      {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newLog);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/log", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldLog = newLog;
+		  logLastPubTime = osKernelGetTickCount();
+      }
     }
 
     if (twasReceived)
     {
 	  twasReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%.0f", seatalk_true_wind_angle_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
-	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_true_wind_speed_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
+
+	  newTwa = seatalk_true_wind_angle_retrieve();
+	  if (newTwa != oldTwa && (osKernelGetTickCount() - twaLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.0f", newTwa);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldTwa = newTwa;
+		  twaLastPubTime = osKernelGetTickCount();
+	  }
+
+	  newTws = seatalk_true_wind_speed_retrieve();
+	  if (newTws != oldTws && (osKernelGetTickCount() - twsLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTws);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldTws = newTws;
+		  twsLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (latReceived)
     {
-      float latitude;
-      latitude = (float)seatalk_latitude_degrees_retrieve();
-      if (latitude > 0.0f)
+  	  latReceived = false;
+
+      newLatitude = (float)seatalk_latitude_degrees_retrieve();
+      if (newLatitude > 0.0f)
       {
-    	latitude += seatalk_latitude_minutes_retrieve() / 60.0f;
+    	  newLatitude += seatalk_latitude_minutes_retrieve() / 60.0f;
       }
       else
       {
-      	latitude -= seatalk_latitude_minutes_retrieve() / 60.0f;
+    	  newLatitude -= seatalk_latitude_minutes_retrieve() / 60.0f;
       }
-	  latReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%f", latitude);
-  	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/lat", (uint8_t *)buf, strlen(buf), false, 5000UL);
+      if (newLatitude != oldLatitude && (osKernelGetTickCount() - latitudeLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+      {
+		  MY_SNPRINTF(buf, sizeof(buf), "%f", newLatitude);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/lat", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldLatitude = newLatitude;
+		  latitudeLastPubTime = osKernelGetTickCount();
+      }
     }
 
     if (longReceived)
     {
-	  float longitude;
-	  longitude = (float)seatalk_longitude_degrees_retrieve();
-	  if (longitude > 0.0f)
+  	  longReceived = false;
+
+	  newLongitude = (float)seatalk_longitude_degrees_retrieve();
+	  if (newLongitude > 0.0f)
 	  {
-		  longitude += seatalk_longitude_minutes_retrieve() / 60.0f;
+		  newLongitude += seatalk_longitude_minutes_retrieve() / 60.0f;
 	   }
 	  else
 	  {
-		  longitude -= seatalk_longitude_minutes_retrieve() / 60.0f;
+		  newLongitude -= seatalk_longitude_minutes_retrieve() / 60.0f;
 	  }
-	  longReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%f", longitude);
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/long", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  if (newLongitude != oldLongitude && (osKernelGetTickCount() - longitudeLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%f", newLongitude);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/long", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldLongitude = newLongitude;
+		  longitudeLastPubTime = osKernelGetTickCount();
+	  }
     }
 
     if (tempReceived)
     {
 	  tempReceived = false;
-	  MY_SNPRINTF(buf, sizeof(buf), "%.1f", seatalk_temperature_data_retrieve());
-	  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/temp", (uint8_t *)buf, strlen(buf), false, 5000UL);
+	  newTemp = seatalk_temperature_data_retrieve();
+	  if (newTemp != oldTemp && (osKernelGetTickCount() - tempLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTemp);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/temp", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldTemp = newTemp;
+		  tempLastPubTime = osKernelGetTickCount();
+	  }
     }
   }
-
-  (void)modemStatus;
-  (void)mqttStatus;
 
   /* USER CODE END 5 */ 
 }
