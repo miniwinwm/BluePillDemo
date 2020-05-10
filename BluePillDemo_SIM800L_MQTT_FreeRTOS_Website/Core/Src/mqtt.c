@@ -566,6 +566,10 @@ MqttStatus_t MqttHandleResponse(uint32_t timeoutMs)
 					mqttStatus = MQTT_OK;
 				}
 			}
+			else
+			{
+				mqttStatus = MQTT_OK;
+			}
 
 			vPortFree(remainingData);
 			return mqttStatus;

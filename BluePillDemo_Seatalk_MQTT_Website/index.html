@@ -1,0 +1,519 @@
+<html>
+	<head>
+		<title></title>	
+		<meta charset="utf-8" />	
+        <style>  
+			div#map {
+				width:530px; height:400px;
+				margin:0;
+				padding:0;
+				border:0;
+				background-color: #999;
+				z-index: 10;
+				position: relative;
+				top: 20px; left: 20px;
+			}
+			div#test_poi {
+				position:absolute;
+				width:10px;
+				height:10px;
+				background-color: #f00;
+				z-index:31;
+			}		
+		        
+			#compassHeading {		
+  				background: url(http://i.imgur.com/44nyA.jpg);
+  				background-size: cover;
+			}			
+			
+			#compassCog {
+  				background: url(http://i.imgur.com/44nyA.jpg);
+  				background-size: cover;
+			}		
+			
+			#angleAwa {
+  				background: url(http://i.imgur.com/R99nk4b.jpg);
+  				background-size: cover;
+			}			
+			
+			#angleTwa {
+  				background: url(http://i.imgur.com/R99nk4b.jpg);
+  				background-size: cover;
+			}					
+			        
+            .container .box {  
+                width:360px;  
+                margin:0px;  
+                display:table;  
+            }  
+            .container .box .box-row {  
+                display:table-row;  
+            }  
+            .container .box .box-cell {  
+                display:table-cell;  
+                width:25%;  
+                padding:10px;  
+            }  
+            .container .box .box-cell.box1 {  
+            }  
+            .container .box .box-cell.box2 {  
+            }  
+            .container .box .box-cell.box3 {  
+            } 
+            .container .box .box-cell.box4 {  
+            }             
+            
+      		.map {
+        		height: 300px;
+        		width: 100%;
+      		}            
+        </style>  
+        
+	    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.3.1/build/ol.js"></script>    
+        
+        <!-- MQTT interface -->
+   		<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+   		<script type = "text/javascript" language = "javascript">
+    		var mqtt;
+			var reconnectTimeout = 2000;
+			var host = "broker.hivemq.com"; 
+			var port = 8000;
+			var boatspeed = 0.0;
+			var sog = 0.0;
+			var tws = 0.0;
+			var aws = 0.0;
+			var depth = 0.0;
+			var trip = 0.0;
+			var log = 0.0;
+			var cog = 0.0;
+			var heading = 0.0;
+			var lat = 58.24;
+			var long = -5.20;
+			var twa = 0.0;
+			var awa = 0.0;
+			var temp = 0.0;
+
+			// callback called when the connection to the broker has been established
+	 		function onConnect() {
+				mqtt.subscribe("BluePillDemo/boatspeed");
+				mqtt.subscribe("BluePillDemo/sog");
+				mqtt.subscribe("BluePillDemo/tws");
+				mqtt.subscribe("BluePillDemo/aws");		
+				mqtt.subscribe("BluePillDemo/depth");				
+				mqtt.subscribe("BluePillDemo/trip");				
+				mqtt.subscribe("BluePillDemo/log");				
+				mqtt.subscribe("BluePillDemo/cog");				
+				mqtt.subscribe("BluePillDemo/heading");								
+				mqtt.subscribe("BluePillDemo/lat");								
+				mqtt.subscribe("BluePillDemo/long");
+				mqtt.subscribe("BluePillDemo/twa");
+				mqtt.subscribe("BluePillDemo/awa");		
+				mqtt.subscribe("BluePillDemo/temp");	
+	  		}
+	  	
+	  		// this is called by the body part of the webpage on loading
+	  		function MQTTconnect() {
+				var sessionId = generateId(20); 	// generate a 20 character unique session id used when connecting
+				mqtt = new Paho.MQTT.Client(host, port, sessionId);
+				var options = {
+					useSSL: false, 
+					timeout: 3, 
+					onSuccess: onConnect,
+					onFailure: onFailure
+				};
+				mqtt.onMessageArrived = onMessageArrived;
+				mqtt.connect(options);
+			}
+			
+			// callback called when the connection fails which reconnects after a timeout
+			function onFailure(message) {
+				setTimeout(MQTTconnect, reconnectTimeout);
+			}
+			
+			// callback called when a incoming publish arrives for a subscribed topic (destinationName)
+			function onMessageArrived(msg) {
+			    if (msg.destinationName == "BluePillDemo/boatspeed") {
+					boatspeed = msg.payloadString;					
+				}	
+			    else if (msg.destinationName == "BluePillDemo/sog") {
+					sog = msg.payloadString;					
+				}	
+			    else if (msg.destinationName == "BluePillDemo/tws") {
+					tws = msg.payloadString;					
+				}	
+			    else if (msg.destinationName == "BluePillDemo/aws") {
+					aws = msg.payloadString;					
+				}		
+			    else if (msg.destinationName == "BluePillDemo/depth") {
+					depth = msg.payloadString;					
+				}		
+			    else if (msg.destinationName == "BluePillDemo/trip") {
+					trip = msg.payloadString;					
+				}					
+			    else if (msg.destinationName == "BluePillDemo/log") {
+					log = msg.payloadString;					
+				}		
+			    else if (msg.destinationName == "BluePillDemo/cog") {
+					cog = msg.payloadString;		
+					setCompassCog(cog);			
+				}	
+			    else if (msg.destinationName == "BluePillDemo/heading") {
+					heading = msg.payloadString;		
+					setCompassHeading(heading);			
+				}			
+			    else if (msg.destinationName == "BluePillDemo/lat") {
+					lat = msg.payloadString;		
+				}
+			    else if (msg.destinationName == "BluePillDemo/long") {
+					long = msg.payloadString;		
+				}	
+			    else if (msg.destinationName == "BluePillDemo/twa") {
+					twa = msg.payloadString;		
+					setAngleTwa(twa);			
+				}					
+			    else if (msg.destinationName == "BluePillDemo/awa") {
+					awa = msg.payloadString;		
+					setAngleAwa(awa);			
+				}
+			    else if (msg.destinationName == "BluePillDemo/temp") {
+					temp = msg.payloadString;		
+				}				
+			}
+						
+			// utility function for unique session id generation
+			function dec2hex (dec) {
+  				return ('0' + dec.toString(16)).substr(-2)
+			}
+
+			// utility function to generate a unique session id string
+			function generateId (len) {
+  				var arr = new Uint8Array((len || 40) / 2)
+  				window.crypto.getRandomValues(arr)
+  				return Array.from(arr, dec2hex).join('')
+			}
+		</script>        
+
+		<!-- Google gauges code -->
+		<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+		<script type="text/javascript">
+			google.charts.load('current', {'packages':['gauge']});
+			google.charts.setOnLoadCallback(drawChart);
+
+			function drawChart() {
+				// boatspeed
+				var boatspeedData = google.visualization.arrayToDataTable([
+          			['Label', 'Value'],
+          			['Boat Speed', 0.0]
+        		]);
+
+	        	var optionsBoatspeed = {
+	          		width: 120, height: 120,
+	          		minorTicks: 4,
+	          		max: 20
+	        	};     	
+	
+	        	var boatspeedChart = new google.visualization.Gauge(document.getElementById('boatspeedGauge'));
+	        	boatspeedChart.draw(boatspeedData, optionsBoatspeed);
+	        	setInterval(function() {
+	          		boatspeedData.setValue(0, 1, parseFloat(boatspeed));
+	          		boatspeedChart.draw(boatspeedData, optionsBoatspeed);
+	        		}, 1000);      
+		
+				// sog
+				var sogData = google.visualization.arrayToDataTable([
+          			['Label', 'Value'],
+          			['SOG', 0.0]
+        		]);
+
+	        	var optionsSog = {
+	          		width: 120, height: 120,
+	          		minorTicks: 4,
+	          		max: 20
+	        	};     	
+	
+	        	var sogChart = new google.visualization.Gauge(document.getElementById('sogGauge'));
+	        	sogChart.draw(sogData, optionsSog);
+	        	setInterval(function() {
+	          		sogData.setValue(0, 1, parseFloat(sog));
+	          		sogChart.draw(sogData, optionsSog);
+	        		}, 1000);       
+	        		
+	        	// tws      		
+				var twsData = google.visualization.arrayToDataTable([
+          			['Label', 'Value'],
+          			['TWS', 0.0]
+        		]);
+
+	        	var optionsTws = {
+	          		width: 120, height: 120,
+          			yellowFrom:22, yellowTo: 33.999,	     
+		     		redFrom: 34, redTo: 60, 	          		
+	          		minorTicks: 6,
+	          		max: 60
+	        	};     	
+	
+	        	var twsChart = new google.visualization.Gauge(document.getElementById('twsGauge'));
+	        	twsChart.draw(twsData, optionsTws);
+	        	setInterval(function() {
+	          		twsData.setValue(0, 1, parseFloat(tws));
+	          		twsChart.draw(twsData, optionsTws);
+	        		}, 1000);       	      
+	        		
+	        	// aws	        		
+				var awsData = google.visualization.arrayToDataTable([
+          			['Label', 'Value'],
+          			['AWS', 0.0]
+        		]);
+
+	        	var optionsAws = {
+	          		width: 120, height: 120,
+          			yellowFrom:22, yellowTo: 33.999,	     
+		     		redFrom: 34, redTo: 60,          			     		
+	          		minorTicks: 6,
+	          		max: 60
+	        	};     	
+	
+	        	var awsChart = new google.visualization.Gauge(document.getElementById('awsGauge'));
+	        	awsChart.draw(awsData, optionsAws);
+	        	setInterval(function() {
+	          		awsData.setValue(0, 1, parseFloat(aws));
+	          		awsChart.draw(awsData, optionsAws);
+	        		}, 1000);       		        		  			        			    				
+      		}
+    	</script>		
+
+		<script type="text/javascript" src="segment-display.js"></script>        
+		<!-- Depth -->
+		<script type="text/javascript">
+			var displayDepth = new SegmentDisplay("displayDepth");
+	  		displayDepth.pattern         = "###.#";
+	  		displayDepth.colorOn         = "rgba(0, 0, 0, 0.9)";
+	  		displayDepth.colorOff        = "rgba(0, 0, 0, 0.1)";
+	
+	  		animateDepth();
+	
+	  		function animateDepth() {
+	    		displayDepth.setValue(Number.parseFloat(depth).toFixed(1).padStart(5,'0'));     
+	    		window.setTimeout('animateDepth()', 1000);
+	  		}
+		</script>    		
+	
+		<!-- Trip -->
+		<script type="text/javascript">
+			var displayTrip = new SegmentDisplay("displayTrip");
+	  		displayTrip.pattern         = "####.#";
+	  		displayTrip.colorOn         = "rgba(0, 0, 0, 0.9)";
+	  		displayTrip.colorOff        = "rgba(0, 0, 0, 0.1)";
+	
+	  		animateTrip();
+	
+	  		function animateTrip() {
+	    		displayTrip.setValue(Number.parseFloat(trip).toFixed(1).padStart(6,'0'));        
+	    		window.setTimeout('animateTrip()', 1000);
+	  		}
+		</script>    	
+		
+		<!-- Log -->		
+		<script type="text/javascript">
+			var displayLog = new SegmentDisplay("displayLog");
+	  		displayLog.pattern         = "#####";
+	  		displayLog.colorOn         = "rgba(0, 0, 0, 0.9)";
+	  		displayLog.colorOff        = "rgba(0, 0, 0, 0.1)";
+	
+	  		animateLog();
+	
+	  		function animateLog() {
+	    		displayLog.setValue(Number.parseFloat(log).toFixed(0).padStart(5,'0'));        
+	    		window.setTimeout('animateLog()', 1000);
+	  		}
+		</script>   		
+		
+		<script type="text/javascript">
+			var displayTemp = new SegmentDisplay("displayTemp");
+	  		displayTemp.pattern         = "##.#";
+	  		displayTemp.colorOn         = "rgba(0, 0, 0, 0.9)";
+	  		displayTemp.colorOff        = "rgba(0, 0, 0, 0.1)";
+	
+	  		animateTemp();
+	
+	  		function animateTemp() {
+	    		displayTemp.setValue(Number.parseFloat(temp).toFixed(1).padStart(4,'0'));        
+	    		window.setTimeout('animateTemp()', 1000);
+	  		}
+		</script>   			
+		
+		<!-- COG -->
+		<script type="text/javascript">
+			function setCompassCog(degrees) {
+  				var x, y, r, ctx, radians;
+  				ctx = window.compassCog.getContext("2d");
+  				radians = 0.0174533 * (degrees - 90);
+				x = ctx.canvas.width / 2;
+				y = ctx.canvas.height / 2; 
+				r = x * 0.8;
+  				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height );
+  				ctx.beginPath();
+  				ctx.strokeStyle = "rgba(255,0,0,0.7)";
+  				ctx.fillStyle = "rgba(255,0,0,0.7)";
+  				ctx.lineCap = 'round';
+ 				ctx.shadowOffsetX = 4;
+ 				ctx.shadowOffsetY = 4;
+  				ctx.shadowBlur = 2;
+  				ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+  				ctx.lineWidth = 5;
+  				ctx.moveTo(x, y);
+  				ctx.lineTo(x + r * Math.cos(radians), y + r * Math.sin(radians));
+  				ctx.stroke();
+			}
+			
+			<!-- Heading -->
+			function setCompassHeading(degrees) {
+  				var x, y, r, ctx, radians;
+  				ctx = window.compassHeading.getContext("2d");
+  				radians = 0.0174533 * (degrees - 90);
+				x = ctx.canvas.width / 2;
+				y = ctx.canvas.height / 2; 
+				r = x * 0.8;
+  				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height );
+  				ctx.beginPath();
+  				ctx.strokeStyle = "rgba(255,0,0,0.7)";
+  				ctx.fillStyle = "rgba(255,0,0,0.7)";
+  				ctx.lineCap = 'round';
+ 				ctx.shadowOffsetX = 4;
+ 				ctx.shadowOffsetY = 4;
+  				ctx.shadowBlur = 2;
+  				ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+  				ctx.lineWidth = 5;
+  				ctx.moveTo(x, y);
+  				ctx.lineTo(x + r * Math.cos(radians), y + r * Math.sin(radians));
+  				ctx.stroke();
+			}			
+		</script>   
+	
+		<!-- AWA -->
+		<script type="text/javascript">
+			function setAngleAwa(degrees) {
+  				var x, y, r, ctx, radians;
+  				ctx = window.angleAwa.getContext("2d");
+  				radians = 0.0174533 * (degrees - 90);
+				x = ctx.canvas.width / 2;
+				y = ctx.canvas.height / 2; 
+				r = x * 0.8;
+  				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height );
+  				ctx.beginPath();
+  				ctx.strokeStyle = "rgba(255,0,0,0.7)";
+  				ctx.fillStyle = "rgba(255,0,0,0.7)";
+  				ctx.lineCap = 'round';
+ 				ctx.shadowOffsetX = 4;
+ 				ctx.shadowOffsetY = 4;
+  				ctx.shadowBlur = 2;
+  				ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+  				ctx.lineWidth = 5;
+  				ctx.moveTo(x, y);
+  				ctx.lineTo(x + r * Math.cos(radians), y + r * Math.sin(radians));
+  				ctx.stroke();
+			}
+			
+			<!-- TWA -->			
+			function setAngleTwa(degrees) {
+  				var x, y, r, ctx, radians;
+  				ctx = window.angleTwa.getContext("2d");
+  				radians = 0.0174533 * (degrees - 90);
+				x = ctx.canvas.width / 2;
+				y = ctx.canvas.height / 2; 
+				r = x * 0.8;
+  				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height );
+  				ctx.beginPath();
+  				ctx.strokeStyle = "rgba(255,0,0,0.7)";
+  				ctx.fillStyle = "rgba(255,0,0,0.7)";
+  				ctx.lineCap = 'round';
+ 				ctx.shadowOffsetX = 4;
+ 				ctx.shadowOffsetY = 4;
+  				ctx.shadowBlur = 2;
+  				ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+  				ctx.lineWidth = 5;
+  				ctx.moveTo(x, y);
+  				ctx.lineTo(x + r * Math.cos(radians), y + r * Math.sin(radians));
+  				ctx.stroke();
+			}			
+		</script>   
+		
+  	</head>
+  	
+  	<body>
+        <div class="container">  
+            <div class="box">  
+            	<!-- first row -->
+                <div class="box-row">  
+                    <div div id = "boatspeedGauge" class="box-cell box1"></div>  
+                    <div div id = "sogGauge" class="box-cell box2"></div>  
+                    <div div id = "twsGauge" class="box-cell box3"></div>  
+                    <div div id = "awsGauge" class="box-cell box4"></div>                      
+                </div>                  
+                
+            	<!-- second row -->      
+				<div class="box-row">  
+                    <div class="box-cell box1">
+						HEADING<canvas id="compassHeading" height=120 width=120></canvas>	                    
+                    </div>  
+                    <div class="box-cell box2">
+						COG Kt<canvas id="compassCog" height=120 width=120></canvas>	                    
+                    </div>         
+                    <div class="box-cell box3">
+						TWA<canvas id="angleTwa" height=120 width=120></canvas>	                    
+                    </div>  
+                    <div class="box-cell box4">
+						AWA<canvas id="angleAwa" height=120 width=120></canvas>	                    
+                    </div>                                
+                </div>    
+                            	          
+            	<!-- third row -->
+                <div class="box-row">  
+                    <div class="box-cell box1">
+						DEPTH m<canvas id="displayDepth" width="120" height="34"></canvas>                    
+                    </div>  
+                    <div class="box-cell box2">
+						TRIP NM<canvas id="displayTrip" width="120" height="34"></canvas>                                        
+                    </div>  
+                    <div class="box-cell box3">
+						LOG NM<canvas id="displayLog" width="120" height="34"></canvas>                                                            
+                    </div>  
+                    <div class="box-cell box4">
+						WATER TEMP<canvas id="displayTemp" width="120" height="34"></canvas>                                                            
+                    </div>                      
+                </div>                   
+            </div>         
+        </div> 
+		<button type = "button" onclick = "go()">Show boat on map</button>
+		
+		<div id="map">
+		</div>
+		
+		<script type="text/javascript" src="Mapiator.js"></script>
+		
+  		<script>
+  			var myMap;
+			MQTTconnect();  
+			setCompassHeading(0);
+			setCompassCog(0);			
+			setAngleAwa(0);
+			setAngleTwa(0);			
+			myMap = new Mapiator.Map('map');
+			myMap.setZoomLevel(14);
+  			myMap.setCenter(0, 0);
+			myMap.redraw();					
+		</script>		  
+		
+		<script type="text/javascript">
+			function go() {
+				myMap.setCenter(lat, long);
+				var test = document.createElement('div');
+				test.onclick = function(e){
+    				alert("\nWhy do C programmers wear glasses?\n\n\nBecause they don't C#.");}
+				test.id = 'test_poi';
+				myMap.overlayLayer.addElement(test, lat, long);
+				myMap.redraw();			
+			}
+		</script>		 
+  	</body>
+</html>
