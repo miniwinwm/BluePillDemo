@@ -308,7 +308,6 @@ int main(void)
   MX_USART2_UART_Init();
   MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
-  serial_init();
   seatalk_init(SeatalkMessageHandler);
 
   /* USER CODE END 2 */
@@ -670,6 +669,8 @@ void mainTask(void *argument)
 
   // wait for modem task to start
   osEventFlagsWait(modemTaskStartedEventHandle, 0x00000001UL, osFlagsWaitAny, osWaitForever);
+
+  serial_init();
 
   // kick watchdog
   HAL_IWDG_Refresh(&hiwdg);
