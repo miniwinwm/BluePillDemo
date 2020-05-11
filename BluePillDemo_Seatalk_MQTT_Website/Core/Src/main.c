@@ -44,23 +44,32 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ACCESS_POINT_NAME			"everywhere"			// network settings
-#define USER_NAME					"eesecure"				// may be blank for some networks in which case change to NULL (not "NULL")
-#define PASSWORD					"secure"				// may be blank for some networks in which case change to NULL (not "NULL")
-#define MQTT_PUBLISH_TOPIC_ROOT		"BluePillDemo"			// topic root for all published values
-#define PUBLISH_PERIOD_MS			5000UL					// time in ms that changed values are published
-#define MINIMUM_REPUBLISH_TIME_MS	30000UL					// time in ms that values are republished even if unchanged
+
+/**** SET YOUR OWN VALUES HERE ****/
+#define ACCESS_POINT_NAME					"everywhere"			// SET YOUR OWN VALUE network settings
+#define USER_NAME							"eesecure"				// SET YOUR OWN VALUE may be blank for some networks in which case change to NULL (not "NULL")
+#define PASSWORD							"secure"				// SET YOUR OWN VALUE may be blank for some networks in which case change to NULL (not "NULL")
+#define MQTT_PUBLISH_TOPIC_ROOT				"BluePillDemo"			// SET YOUR OWN VALUE topic root for all published values
+#error "Remove this line when you have set your own values above"
+
+#define PUBLISH_PERIOD_MS					5000UL					// time in ms that changed values are published
+#define MINIMUM_REPUBLISH_TIME_MS			30000UL					// time in ms that values are republished even if unchanged
+#define NETWORK_REGISTRATION_WAIT_TIME_MS	30000UL					// time to wait for network registration before giving up
 
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define MY_SNPRINTF snprintf
+#define MY_SNPRINTF snprintf	// newlib snprintf with float support is too heavy and not threadsafe so using local snprintf from printf.c
+								// but this causes a compile warning that float support is off so use this macro to prevent it
 
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+IWDG_HandleTypeDef hiwdg;
+
 TIM_HandleTypeDef htim2;
+
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart1_rx;
@@ -83,7 +92,6 @@ uint8_t responseQueueBuffer[ 1 * sizeof( AtResponsePacket_t ) ];
 osStaticMessageQDef_t responseQueueControlBlock;
 osMutexId_t modemMutexHandle;
 osStaticMutexDef_t modemMutexControlBlock;
-
 /* USER CODE BEGIN PV */
 osEventFlagsId_t modemTaskStartedEventHandle;
 static bool subscribeResponseReceived;
@@ -155,6 +163,7 @@ static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_IWDG_Init(void);
 void mainTask(void *argument);
 void modemTask(void *argument);
 
@@ -297,6 +306,7 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
   serial_init();
   seatalk_init(SeatalkMessageHandler);
@@ -408,10 +418,11 @@ void SystemClock_Config(void)
 
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
@@ -432,6 +443,34 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief IWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_IWDG_Init(void)
+{
+
+  /* USER CODE BEGIN IWDG_Init 0 */
+
+  /* USER CODE END IWDG_Init 0 */
+
+  /* USER CODE BEGIN IWDG_Init 1 */
+
+  /* USER CODE END IWDG_Init 1 */
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_256;
+  hiwdg.Init.Reload = 4095;
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN IWDG_Init 2 */
+
+  /* USER CODE END IWDG_Init 2 */
+
 }
 
 /**
@@ -626,44 +665,96 @@ void mainTask(void *argument)
   char ipAddress[MODEM_MAX_IP_ADDRESS_LENGTH];
   uint32_t startTime;
 
+  // kick watchdog
+  HAL_IWDG_Refresh(&hiwdg);
+
   // wait for modem task to start
   osEventFlagsWait(modemTaskStartedEventHandle, 0x00000001UL, osFlagsWaitAny, osWaitForever);
+
+  // kick watchdog
+  HAL_IWDG_Refresh(&hiwdg);
 
   modemStatus = ModemHello(250UL);
   ModemDebugPrintStatus("Hello", modemStatus);
 
+  DebugPrint("Attempting to register on network\r\n");
+  startTime = osKernelGetTickCount();
   do
   {
-	modemStatus = ModemGetNetworkRegistrationStatus(&registrationStatus, 250UL);
+    // kick watchdog
+    HAL_IWDG_Refresh(&hiwdg);
+
+	ModemGetNetworkRegistrationStatus(&registrationStatus, 250UL);
 	osDelay(1000UL);
+
+	if (osKernelGetTickCount() > startTime + NETWORK_REGISTRATION_WAIT_TIME_MS)
+	{
+		DebugPrint("Could not register on network, rebooting\r\n");
+		while (true)
+		{
+		  osDelay(1000UL);
+		}
+	}
   } while (!registrationStatus);
   ModemDebugPrintStatus("Register on network", modemStatus);
 
   modemStatus = ModemSetManualDataRead(250UL);
   ModemDebugPrintStatus("Set manual read", modemStatus);
 
-  modemStatus = ModemConfigureDataConnection(ACCESS_POINT_NAME, USER_NAME, PASSWORD, 250UL);
-  ModemDebugPrintStatus("Configure data connection", modemStatus);
+  if (modemStatus >= MODEM_OK)
+  {
+    modemStatus = ModemConfigureDataConnection(ACCESS_POINT_NAME, USER_NAME, PASSWORD, 250UL);
+    ModemDebugPrintStatus("Configure data connection", modemStatus);
+  }
 
-  modemStatus = ModemActivateDataConnection(10000UL);
-  ModemDebugPrintStatus("Activate data connection", modemStatus);
+  if (modemStatus >= MODEM_OK)
+  {
+	modemStatus = ModemActivateDataConnection(10000UL);
+    ModemDebugPrintStatus("Activate data connection", modemStatus);
+  }
 
-  modemStatus = ModemGetOwnIpAddress(ipAddress, MODEM_MAX_IP_ADDRESS_LENGTH, 250UL);
-  ModemDebugPrintStatus("Get own IP address", modemStatus);
+  if (modemStatus >= MODEM_OK)
+  {
+    modemStatus = ModemGetOwnIpAddress(ipAddress, MODEM_MAX_IP_ADDRESS_LENGTH, 250UL);
+    ModemDebugPrintStatus("Get own IP address", modemStatus);
+  }
+
+  if (modemStatus < MODEM_OK)
+  {
+	  DebugPrint("Modem error in modem configuration, rebooting\r\n");
+	  while (true)
+	  {
+	    osDelay(1000UL);
+	  }
+  }
 
   MqttSetSubscribeResponseCallback(SubscribeResponseCallback);
+
+  // kick watchdog
+  HAL_IWDG_Refresh(&hiwdg);
 
   // open TCP connection to broker
   modemStatus = ModemOpenTcpConnection("broker.hivemq.com", 1883U, 8000UL);
   ModemDebugPrintStatus("Open TCP connection", modemStatus);
 
+  // kick watchdog
+  HAL_IWDG_Refresh(&hiwdg);
+
+  if (modemStatus < MODEM_OK)
+  {
+	  DebugPrint("Coule no open connection to broker, rebooting\r\n");
+	  while (true)
+	  {
+	    osDelay(1000UL);
+	  }
+  }
+
   // connect to broker
   mqttStatus = MqttConnect("1234", NULL, NULL, 600U, 20000UL);
-
   MqttDebugPrintStatus("MQTT connect", mqttStatus);
   if (mqttStatus != MQTT_OK)
   {
-	DebugPrint("Could not connect, giving up\r\n");
+	DebugPrint("Could not connect to broker, rebooting\r\n");
 	while (true)
 	{
 	  osDelay(1000UL);
@@ -673,6 +764,9 @@ void mainTask(void *argument)
   // go into main loop
   while (true)
   {
+	// kick watchdog
+	HAL_IWDG_Refresh(&hiwdg);
+
 	// go into wait loop checking for incoming seatalk messages and incoming MQTT responses
 	startTime = osKernelGetTickCount();
 	uint8_t i = 0U;
@@ -686,7 +780,7 @@ void mainTask(void *argument)
 	    if (i == 25U)
 	    {
 	    	i = 0U;
-			MqttHandleResponse(5000UL);
+	    	mqttStatus = MqttHandleResponse(5000UL);
 	    }
 
 		if (osKernelGetTickCount() > startTime + PUBLISH_PERIOD_MS)
@@ -697,11 +791,11 @@ void mainTask(void *argument)
 
     char buf[20];
 
-    if (sogReceived)
+    if (sogReceived && mqttStatus >= MQTT_OK)
     {
       sogReceived = false;
       newSog = seatalk_speed_over_ground_data_retrieve();
-      if (oldSog != newSog && (osKernelGetTickCount() - sogLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+      if (oldSog != newSog || (osKernelGetTickCount() - sogLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
       {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newSog);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/sog", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -710,11 +804,11 @@ void mainTask(void *argument)
       }
     }
 
-    if (depthReceived)
+    if (depthReceived && mqttStatus >= MQTT_OK)
     {
 	  depthReceived = false;
 	  newDepth = seatalk_depth_data_retrieve();
-	  if (oldDepth != newDepth && (osKernelGetTickCount() - depthLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (oldDepth != newDepth || (osKernelGetTickCount() - depthLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newDepth);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/depth", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -723,11 +817,11 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (boatspeedReceived)
+    if (boatspeedReceived && mqttStatus >= MQTT_OK)
     {
 	  boatspeedReceived = false;
 	  newBoatspeed = seatalk_boat_speed_data_retrieve();
-	  if (newBoatspeed != oldBoatspeed && (osKernelGetTickCount() - boatspeedLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newBoatspeed != oldBoatspeed || (osKernelGetTickCount() - boatspeedLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newBoatspeed);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/boatspeed", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -736,7 +830,7 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (awaReceived)
+    if (awaReceived && mqttStatus >= MQTT_OK)
     {
 	  awaReceived = false;
 	  newAwa = seatalk_apparent_wind_angle_retrieve();
@@ -749,11 +843,11 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (awsReceived)
+    if (awsReceived && mqttStatus >= MQTT_OK)
     {
 	  awsReceived = false;
 	  newAws = seatalk_apparent_wind_speed_retrieve();
-	  if (newAws != oldAws && (osKernelGetTickCount() - awsLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newAws != oldAws || (osKernelGetTickCount() - awsLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newAws);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/aws", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -762,11 +856,11 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (cogReceived)
+    if (cogReceived && mqttStatus >= MQTT_OK)
     {
 	  cogReceived = false;
 	  newCog = seatalk_course_over_ground_data_retrieve();
-	  if (newCog != oldCog && (osKernelGetTickCount() - cogLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newCog != oldCog || (osKernelGetTickCount() - cogLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%hu", newCog);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/cog", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -775,12 +869,12 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (heading1Received || heading2Received)
+    if ((heading1Received || heading2Received)  && mqttStatus >= MQTT_OK)
     {
 	  heading1Received = false;
 	  heading2Received = false;
 	  newHeading = seatalk_heading_magnetic_retrieve();
-	  if (newHeading != oldHeading && (osKernelGetTickCount() - headingLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newHeading != oldHeading || (osKernelGetTickCount() - headingLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  snprintf(buf, sizeof(buf), "%hu", newHeading);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/heading", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -789,11 +883,11 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (tripReceived)
+    if (tripReceived && mqttStatus >= MQTT_OK)
     {
 	  tripReceived = false;
 	  newTrip = seatalk_trip_data_retrieve();
-	  if (newTrip != oldTrip && (osKernelGetTickCount() - tripLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newTrip != oldTrip || (osKernelGetTickCount() - tripLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTrip);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/trip", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -802,11 +896,11 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (logReceived)
+    if (logReceived && mqttStatus >= MQTT_OK)
     {
       logReceived = false;
       newLog = seatalk_log_data_retrieve();
-      if (newLog != oldLog && (osKernelGetTickCount() - logLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+      if (newLog != oldLog || (osKernelGetTickCount() - logLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
       {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newLog);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/log", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -815,12 +909,12 @@ void mainTask(void *argument)
       }
     }
 
-    if (twasReceived)
+    if (twasReceived && mqttStatus >= MQTT_OK)
     {
 	  twasReceived = false;
 
 	  newTwa = seatalk_true_wind_angle_retrieve();
-	  if (newTwa != oldTwa && (osKernelGetTickCount() - twaLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newTwa != oldTwa || (osKernelGetTickCount() - twaLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.0f", newTwa);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -829,7 +923,7 @@ void mainTask(void *argument)
 	  }
 
 	  newTws = seatalk_true_wind_speed_retrieve();
-	  if (newTws != oldTws && (osKernelGetTickCount() - twsLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newTws != oldTws || (osKernelGetTickCount() - twsLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTws);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -838,7 +932,7 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (latReceived)
+    if (latReceived && mqttStatus >= MQTT_OK)
     {
   	  latReceived = false;
 
@@ -851,7 +945,7 @@ void mainTask(void *argument)
       {
     	  newLatitude -= seatalk_latitude_minutes_retrieve() / 60.0f;
       }
-      if (newLatitude != oldLatitude && (osKernelGetTickCount() - latitudeLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+      if (newLatitude != oldLatitude || (osKernelGetTickCount() - latitudeLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
       {
 		  MY_SNPRINTF(buf, sizeof(buf), "%f", newLatitude);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/lat", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -860,7 +954,7 @@ void mainTask(void *argument)
       }
     }
 
-    if (longReceived)
+    if (longReceived && mqttStatus >= MQTT_OK)
     {
   	  longReceived = false;
 
@@ -873,7 +967,7 @@ void mainTask(void *argument)
 	  {
 		  newLongitude -= seatalk_longitude_minutes_retrieve() / 60.0f;
 	  }
-	  if (newLongitude != oldLongitude && (osKernelGetTickCount() - longitudeLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newLongitude != oldLongitude || (osKernelGetTickCount() - longitudeLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%f", newLongitude);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/long", (uint8_t *)buf, strlen(buf), false, 5000UL);
@@ -882,16 +976,25 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (tempReceived)
+    if (tempReceived && mqttStatus >= MQTT_OK)
     {
 	  tempReceived = false;
 	  newTemp = seatalk_temperature_data_retrieve();
-	  if (newTemp != oldTemp && (osKernelGetTickCount() - tempLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+	  if (newTemp != oldTemp || (osKernelGetTickCount() - tempLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTemp);
 		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/temp", (uint8_t *)buf, strlen(buf), false, 5000UL);
 		  oldTemp = newTemp;
 		  tempLastPubTime = osKernelGetTickCount();
+	  }
+    }
+
+    if (mqttStatus < MQTT_OK)
+    {
+      MqttDebugPrintStatus("MQTT error, rebooting", mqttStatus);
+	  while (true)
+	  {
+	    osDelay(1000UL);
 	  }
     }
   }
