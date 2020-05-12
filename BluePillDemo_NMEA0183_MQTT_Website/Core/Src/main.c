@@ -28,12 +28,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
 #include "task.h"
 #include "modem.h"
 #include "buffered_serial.h"
+#include "buffered_serial2.h"
 #include "mqtt.h"
-#include "seatalk.h"
 #include "printf.h"
+#include "nmea.h"
 
 /* USER CODE END Includes */
 
@@ -50,7 +52,7 @@
 #define USER_NAME							"eesecure"				// SET YOUR OWN VALUE may be blank for some networks in which case change to NULL (not "NULL")
 #define PASSWORD							"secure"				// SET YOUR OWN VALUE may be blank for some networks in which case change to NULL (not "NULL")
 #define MQTT_PUBLISH_TOPIC_ROOT				"BluePillDemo"			// SET YOUR OWN VALUE topic root for all published values
-#error "Remove this line when you have set your own values above"
+//#error "Remove this line when you have set your own values above"
 
 #define PUBLISH_PERIOD_MS					5000UL					// time in ms that changed values are published
 #define MINIMUM_REPUBLISH_TIME_MS			30000UL					// time in ms that values are republished even if unchanged
@@ -68,12 +70,12 @@
 /* Private variables ---------------------------------------------------------*/
 IWDG_HandleTypeDef hiwdg;
 
-TIM_HandleTypeDef htim2;
-
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 typedef StaticTask_t osStaticThreadDef_t;
 typedef StaticQueue_t osStaticMessageQDef_t;
@@ -96,63 +98,36 @@ osStaticMutexDef_t modemMutexControlBlock;
 osEventFlagsId_t modemTaskStartedEventHandle;
 static bool subscribeResponseReceived;
 static uint16_t subscribeResponsePacketIdentifier;
-static bool sogReceived;
-static bool depthReceived;
-static bool boatspeedReceived;
-static bool awaReceived;
-static bool awsReceived;
-static bool sogReceived;
-static bool cogReceived;
-static bool heading1Received;
-static bool heading2Received;
-static bool tripReceived;
-static bool logReceived;
-static bool twasReceived;
-static bool latReceived;
-static bool longReceived;
-static bool tempReceived;
+
+// RMC receive message
+static void RMC_receive_callback(char *data);
+static nmea_message_data_RMC_t nmea_message_data_RMC;
+static const nmea_receive_message_details_t nmea_receive_message_details_RMC = {nmea_message_RMC, RMC_receive_callback};
 static float newSog;
 static float oldSog;
+static bool sogReceived;
 static uint32_t sogLastPubTime = UINT32_MAX / 2;
-static float newDepth;
-static float oldDepth;
-static uint32_t depthLastPubTime = UINT32_MAX / 2;
-static float newBoatspeed;
-static float oldBoatspeed;
-static uint32_t boatspeedLastPubTime = UINT32_MAX / 2;
-static float newAwa;
-static float oldAwa;
-static uint32_t awaLastPubTime = UINT32_MAX / 2;
-static float newAws;
-static float oldAws;
-static uint32_t awsLastPubTime = UINT32_MAX / 2;
 static int16_t newCog;
 static int16_t oldCog;
+static bool cogReceived;
 static uint32_t cogLastPubTime = UINT32_MAX / 2;
-static float oldTrip;
-static float newTrip;
-static uint32_t tripLastPubTime = UINT32_MAX / 2;
-static float newLog;
-static float oldLog;
-static uint32_t logLastPubTime = UINT32_MAX / 2;
-static float newTemp;
-static float oldTemp;
-static uint32_t tempLastPubTime = UINT32_MAX / 2;
-static float newTws;
-static float oldTws;
-static uint32_t twsLastPubTime = UINT32_MAX / 2;
-static float newTwa;
-static float oldTwa;
-static uint32_t twaLastPubTime = UINT32_MAX / 2;
 static float newLatitude;
 static float oldLatitude;
+static bool latReceived;
 static uint32_t latitudeLastPubTime = UINT32_MAX / 2;
 static float newLongitude;
 static float oldLongitude;
+static bool longReceived;
 static uint32_t longitudeLastPubTime = UINT32_MAX / 2;
-static float newHeading;
-static float oldHeading;
-static uint32_t headingLastPubTime = UINT32_MAX / 2;
+
+// DPT receive message
+static void DPT_receive_callback(char *data);
+static nmea_message_data_DPT_t nmea_message_data_DPT;
+static const nmea_receive_message_details_t nmea_receive_message_details_DPT = {nmea_message_DPT, DPT_receive_callback};
+static float newDepth;
+static float oldDepth;
+static bool depthReceived;
+static uint32_t depthLastPubTime = UINT32_MAX / 2;
 
 /* USER CODE END PV */
 
@@ -160,10 +135,10 @@ static uint32_t headingLastPubTime = UINT32_MAX / 2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_IWDG_Init(void);
+static void MX_USART3_UART_Init(void);
 void mainTask(void *argument);
 void modemTask(void *argument);
 
@@ -174,7 +149,6 @@ void PublishCallback(const char *topic, uint8_t topicLength, const uint8_t *payl
 void PingResponseCallback(void);
 void SubscribeResponseCallback(uint16_t packetIdentifier, bool success);
 void UnsubscribeResponseCallback(uint16_t packetIdentifier);
-void SeatalkMessageHandler(uint8_t messageType);
 static void DebugPrint(const char *text);
 
 /* USER CODE END PFP */
@@ -182,67 +156,59 @@ static void DebugPrint(const char *text);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void SeatalkMessageHandler(uint8_t messageType)
+static void RMC_receive_callback(char *data)
 {
-	switch(messageType)
+	float int_part;
+	float frac_part;
+
+	if (nmea_decode_RMC(data, &nmea_message_data_RMC) == nmea_error_none)
 	{
-	case SEATALK_DEPTH:
-		depthReceived = true;
-		break;
+		if (nmea_message_data_RMC.status == 'A')
+		{
+			if (nmea_message_data_RMC.data_available & NMEA_RMC_SOG_PRESENT)
+			{
+				newSog = nmea_message_data_RMC.SOG;
+				sogReceived = true;;
+			}
 
-	case SEATALK_BOATSPEED:
-		boatspeedReceived = true;
-		break;
+			if (nmea_message_data_RMC.data_available & NMEA_RMC_COG_PRESENT)
+			{
+				newCog = nmea_message_data_RMC.COG;
+				cogReceived = true;
+			}
 
-	case SEATALK_APPARENT_WIND_ANGLE:
-		awaReceived = true;
-		break;
+			if (nmea_message_data_RMC.data_available & NMEA_RMC_LATITUDE_PRESENT)
+			{
+				frac_part = modff(nmea_message_data_RMC.latitude / 100.0f, &int_part);
+				newLatitude = int_part;
+				newLatitude += frac_part / 0.6f;
 
-	case SEATALK_APPARENT_WIND_SPEED:
-		awsReceived = true;
-		break;
+				latReceived = true;
+			}
 
-	case SEATALK_SOG:
-		sogReceived = true;
-		break;
-
-	case SEATALK_COG:
-		cogReceived = true;
-		break;
-
-	case SEATALK_HEADING_MAGNETIC_1:
-		heading1Received = true;
-		break;
-
-	case SEATALK_HEADING_MAGNETIC_2:
-		heading2Received = true;
-		break;
-
-	case SEATALK_TRIPLOG:
-		tripReceived = true;
-		logReceived = true;
-		break;
-
-	case SEATALK_TRUE_WIND_ANGLE_SPEED:
-		twasReceived = true;
-		break;
-
-	case SEATALK_LATITUDE:
-		latReceived = true;
-		break;
-
-	case SEATALK_LONGITUDE:
-		longReceived = true;
-		break;
-
-	case SEATALK_TEMPERATURE:
-		tempReceived = true;
-		break;
-
-	default:
-		break;
+			if (nmea_message_data_RMC.data_available & NMEA_RMC_LONGITUDE_PRESENT)
+			{
+				frac_part = modff(nmea_message_data_RMC.longitude / 100.0f, &int_part);
+				newLongitude = int_part;
+				newLongitude += frac_part / 0.6f;
+				longReceived = true;
+			}
+		}
 	}
 }
+
+static void DPT_receive_callback(char *data)
+{
+	if (nmea_decode_DPT(data, &nmea_message_data_DPT) == nmea_error_none)
+	{
+		if (nmea_message_data_DPT.data_available & NMEA_DPT_DEPTH_PRESENT)
+		{
+			newDepth = nmea_message_data_DPT.depth;
+			depthReceived = true;;
+		}
+	}
+}
+// todo add more NMEA0183 message type callbacks here
 
 void SubscribeResponseCallback(uint16_t packetIdentifier, bool success)
 {
@@ -303,12 +269,11 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_TIM2_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_IWDG_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  seatalk_init(SeatalkMessageHandler);
 
   /* USER CODE END 2 */
 
@@ -473,51 +438,6 @@ static void MX_IWDG_Init(void)
 }
 
 /**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM2_Init(void)
-{
-
-  /* USER CODE BEGIN TIM2_Init 0 */
-
-  /* USER CODE END TIM2_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 1;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 936;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
-
-  /* USER CODE END TIM2_Init 2 */
-
-}
-
-/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -583,6 +503,39 @@ static void MX_USART2_UART_Init(void)
 
 }
 
+/**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 4800;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
+}
+
 /** 
   * Enable DMA controller clock
   */
@@ -593,6 +546,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
   /* DMA1_Channel4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
@@ -615,31 +571,16 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_4, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : PC13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  /*Configure GPIO pin : PA0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PA0 PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_5;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
@@ -670,7 +611,12 @@ void mainTask(void *argument)
   // wait for modem task to start
   osEventFlagsWait(modemTaskStartedEventHandle, 0x00000001UL, osFlagsWaitAny, osWaitForever);
 
+  // start modem serial port reception
   serial_init();
+
+  nmea_enable_receive_message(&nmea_receive_message_details_RMC);
+  nmea_enable_receive_message(&nmea_receive_message_details_DPT);
+  // todo add more enable receive calls for NMEA0183 messag etypes here
 
   // kick watchdog
   HAL_IWDG_Refresh(&hiwdg);
@@ -743,7 +689,7 @@ void mainTask(void *argument)
 
   if (modemStatus < MODEM_OK)
   {
-	  DebugPrint("Coule no open connection to broker, rebooting\r\n");
+	  DebugPrint("Could not open connection to broker, rebooting\r\n");
 	  while (true)
 	  {
 	    osDelay(1000UL);
@@ -762,19 +708,21 @@ void mainTask(void *argument)
 	}
   }
 
+  // start NMEA0183 serial port reception
+  serial2_init();
+
   // go into main loop
   while (true)
   {
 	// kick watchdog
 	HAL_IWDG_Refresh(&hiwdg);
 
-	// go into wait loop checking for incoming seatalk messages and incoming MQTT responses
+	// go into wait loop checking for incoming nmea messages and incoming MQTT responses
 	startTime = osKernelGetTickCount();
 	uint8_t i = 0U;
 	while (true)
 	{
-	  	seatalk_parse_next_message();
-	  	seatalk_send_next_message();
+		nmea_process();
 	    osDelay(10UL);
 
 	    i++;
@@ -792,10 +740,23 @@ void mainTask(void *argument)
 
     char buf[20];
 
+    // DPT message handling
+    if (depthReceived && mqttStatus >= MQTT_OK)
+    {
+      depthReceived = false;
+      if (oldDepth != newDepth || (osKernelGetTickCount() - depthLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
+      {
+		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newDepth);
+		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/depth", (uint8_t *)buf, strlen(buf), false, 5000UL);
+		  oldDepth = newDepth;
+		  depthLastPubTime = osKernelGetTickCount();
+      }
+    }
+
+    // RMC message handling
     if (sogReceived && mqttStatus >= MQTT_OK)
     {
       sogReceived = false;
-      newSog = seatalk_speed_over_ground_data_retrieve();
       if (oldSog != newSog || (osKernelGetTickCount() - sogLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
       {
 		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newSog);
@@ -805,62 +766,9 @@ void mainTask(void *argument)
       }
     }
 
-    if (depthReceived && mqttStatus >= MQTT_OK)
-    {
-	  depthReceived = false;
-	  newDepth = seatalk_depth_data_retrieve();
-	  if (oldDepth != newDepth || (osKernelGetTickCount() - depthLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newDepth);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/depth", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldDepth = newDepth;
-		  depthLastPubTime = osKernelGetTickCount();
-	  }
-    }
-
-    if (boatspeedReceived && mqttStatus >= MQTT_OK)
-    {
-	  boatspeedReceived = false;
-	  newBoatspeed = seatalk_boat_speed_data_retrieve();
-	  if (newBoatspeed != oldBoatspeed || (osKernelGetTickCount() - boatspeedLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newBoatspeed);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/boatspeed", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldBoatspeed = newBoatspeed;
-		  boatspeedLastPubTime = osKernelGetTickCount();
-	  }
-    }
-
-    if (awaReceived && mqttStatus >= MQTT_OK)
-    {
-	  awaReceived = false;
-	  newAwa = seatalk_apparent_wind_angle_retrieve();
-	  if (newAwa != oldAwa && (osKernelGetTickCount() - awaLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.0f", newAwa);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/awa", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldAwa = newAwa;
-		  awaLastPubTime = osKernelGetTickCount();
-	  }
-    }
-
-    if (awsReceived && mqttStatus >= MQTT_OK)
-    {
-	  awsReceived = false;
-	  newAws = seatalk_apparent_wind_speed_retrieve();
-	  if (newAws != oldAws || (osKernelGetTickCount() - awsLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newAws);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/aws", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldAws = newAws;
-		  awsLastPubTime = osKernelGetTickCount();
-	  }
-    }
-
     if (cogReceived && mqttStatus >= MQTT_OK)
     {
 	  cogReceived = false;
-	  newCog = seatalk_course_over_ground_data_retrieve();
 	  if (newCog != oldCog || (osKernelGetTickCount() - cogLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%hu", newCog);
@@ -870,82 +778,11 @@ void mainTask(void *argument)
 	  }
     }
 
-    if ((heading1Received || heading2Received)  && mqttStatus >= MQTT_OK)
-    {
-	  heading1Received = false;
-	  heading2Received = false;
-	  newHeading = seatalk_heading_magnetic_retrieve();
-	  if (newHeading != oldHeading || (osKernelGetTickCount() - headingLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  snprintf(buf, sizeof(buf), "%hu", newHeading);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/heading", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldHeading = newHeading;
-		  headingLastPubTime = osKernelGetTickCount();
-	  }
-    }
-
-    if (tripReceived && mqttStatus >= MQTT_OK)
-    {
-	  tripReceived = false;
-	  newTrip = seatalk_trip_data_retrieve();
-	  if (newTrip != oldTrip || (osKernelGetTickCount() - tripLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTrip);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/trip", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldTrip = newTrip;
-		  tripLastPubTime = osKernelGetTickCount();
-	  }
-    }
-
-    if (logReceived && mqttStatus >= MQTT_OK)
-    {
-      logReceived = false;
-      newLog = seatalk_log_data_retrieve();
-      if (newLog != oldLog || (osKernelGetTickCount() - logLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-      {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newLog);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/log", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldLog = newLog;
-		  logLastPubTime = osKernelGetTickCount();
-      }
-    }
-
-    if (twasReceived && mqttStatus >= MQTT_OK)
-    {
-	  twasReceived = false;
-
-	  newTwa = seatalk_true_wind_angle_retrieve();
-	  if (newTwa != oldTwa || (osKernelGetTickCount() - twaLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.0f", newTwa);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldTwa = newTwa;
-		  twaLastPubTime = osKernelGetTickCount();
-	  }
-
-	  newTws = seatalk_true_wind_speed_retrieve();
-	  if (newTws != oldTws || (osKernelGetTickCount() - twsLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTws);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/twa", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldTws = newTws;
-		  twsLastPubTime = osKernelGetTickCount();
-	  }
-    }
 
     if (latReceived && mqttStatus >= MQTT_OK)
     {
   	  latReceived = false;
 
-      newLatitude = (float)seatalk_latitude_degrees_retrieve();
-      if (newLatitude > 0.0f)
-      {
-    	  newLatitude += seatalk_latitude_minutes_retrieve() / 60.0f;
-      }
-      else
-      {
-    	  newLatitude -= seatalk_latitude_minutes_retrieve() / 60.0f;
-      }
       if (newLatitude != oldLatitude || (osKernelGetTickCount() - latitudeLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
       {
 		  MY_SNPRINTF(buf, sizeof(buf), "%f", newLatitude);
@@ -959,15 +796,6 @@ void mainTask(void *argument)
     {
   	  longReceived = false;
 
-	  newLongitude = (float)seatalk_longitude_degrees_retrieve();
-	  if (newLongitude > 0.0f)
-	  {
-		  newLongitude += seatalk_longitude_minutes_retrieve() / 60.0f;
-	   }
-	  else
-	  {
-		  newLongitude -= seatalk_longitude_minutes_retrieve() / 60.0f;
-	  }
 	  if (newLongitude != oldLongitude || (osKernelGetTickCount() - longitudeLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
 	  {
 		  MY_SNPRINTF(buf, sizeof(buf), "%f", newLongitude);
@@ -977,18 +805,8 @@ void mainTask(void *argument)
 	  }
     }
 
-    if (tempReceived && mqttStatus >= MQTT_OK)
-    {
-	  tempReceived = false;
-	  newTemp = seatalk_temperature_data_retrieve();
-	  if (newTemp != oldTemp || (osKernelGetTickCount() - tempLastPubTime > MINIMUM_REPUBLISH_TIME_MS))
-	  {
-		  MY_SNPRINTF(buf, sizeof(buf), "%.1f", newTemp);
-		  mqttStatus = MqttPublish(MQTT_PUBLISH_TOPIC_ROOT "/temp", (uint8_t *)buf, strlen(buf), false, 5000UL);
-		  oldTemp = newTemp;
-		  tempLastPubTime = osKernelGetTickCount();
-	  }
-    }
+    // XXX message handling
+    // todo add more NMEA0183 message type handling here
 
     if (mqttStatus < MQTT_OK)
     {
