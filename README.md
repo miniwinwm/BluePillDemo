@@ -6,7 +6,9 @@ The manufacturer of the processor on the Blue Pill board, ST, provide a compiler
 
 In the project there is a readme file describing the project, a circuit diagram if required and the STM32CubeIDE hardware configuration file that is used to set up the processor's hardware and any peripheral used. The example code then makes calls into ST's HAL library to operate the peripheral.
 
-Once the code is built, flashing and debugging needs a ST-LINK device connected to the Serial Wire 4 pin header at the end of the Blue Pill board. These are cheaply available on ebay for a few £€$, often supplied together with a Blue Pill board. You need 4 female to female jumper cables to connect the two.
+Once the code is built, flashing and debugging needs a ST-LINK device connected to the Serial Wire 4 pin header at the end of the Blue Pill board. These are cheaply available on ebay for a few £€$, often supplied together with a Blue Pill board. You need 4 female to female jumper cables to connect the two. Note: The ST-LINK v2 debugger will not connect to Blue Pill boards with fake processors on them. Some Blue Pill boards are supplied with non-genuine or cloned STm103C8T6 processors.
+
+The Seatalk projects are only of interest for interfacing with the Seatalk marine data network.
 
 # Creating a new Blue Pill project
 
