@@ -144,7 +144,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	tx_data[0] = !tx_data[0];
 	uint32_t tx_mailbox_number;
-	HAL_CAN_AddTxMessage(&hcan, &tx_header,tx_data, &tx_mailbox_number);
+	HAL_CAN_AddTxMessage(&hcan, &tx_header, tx_data, &tx_mailbox_number);
 	HAL_Delay(200U);
   }
   /* USER CODE END 3 */
