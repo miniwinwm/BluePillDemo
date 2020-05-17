@@ -1,7 +1,7 @@
 This project uses the Blue Pill board to connect to a MAX30102 pulse oximeter sensor
 mounted on a break out board by I2C. This sensor can detect harbeats and blood oxygen
 saturation. It outputs the results as a SpO2 percentage (peripheral blood oxidation
-level) and hear rate in beats per minute to a serial terminal at 115200 baud. Also
+level) and heart rate in beats per minute to a serial terminal at 115200 baud. Also
 connected is a LED which flashes with the detected heartbeat.
 
 These sensors are quite picky about your finger being placed correctly and without
