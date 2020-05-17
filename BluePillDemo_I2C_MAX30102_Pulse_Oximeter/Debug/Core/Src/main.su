@@ -1,0 +1,11 @@
+main.c:82:13:DebugPrint	16	static
+main.c:87:6:SetPwmDutyCycle	48	static
+main.c:99:6:Max30102Setup	16	static
+main.c:109:6:Max30102Loop	96	static
+main.c:200:5:main	8	static
+main.c:250:6:SystemClock_Config	72	static
+main.c:287:13:MX_I2C1_Init	8	static
+main.c:321:13:MX_TIM4_Init	48	static
+main.c:370:13:MX_USART2_UART_Init	8	static
+main.c:403:13:MX_GPIO_Init	32	static
+main.c:427:6:Error_Handler	4	static
