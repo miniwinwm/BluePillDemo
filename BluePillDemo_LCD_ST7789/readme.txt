@@ -2,7 +2,7 @@ This example provides sample code for a TFT LCD display with a ST7789 driver chi
 240 x 240 pixel display via a half-duplex SPI interface. These panels are readily available
 on ebay at low cost. The colour depth is 16 bit in 565 format.
 
-The code is separated into 3 layers. At the lowest in the ST7789 driver that used the HAL
+The code is separated into 3 layers. The lowest layer is the ST7789 driver that uses the HAL
 to access the SPI1 peripheral. This is in files st7789.h/c. Above that is a graphics 
 library layer in files graphics.h/c. This provides a simple graphics library for plotting
 lines, shapes, bitmaps, circles and a small font vertically and horizontally. It isn't 
