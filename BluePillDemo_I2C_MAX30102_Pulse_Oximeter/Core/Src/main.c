@@ -46,7 +46,7 @@
 #define MAX_BRIGHTNESS 		255U
 #define MY_SNPRINTF 		snprintf	// newlib snprintf with float support is too heavy and not threadsafe so using local snprintf from printf.c
 										// but this causes a compile warning that float support is off so use this macro to prevent it
-//#define FAKE_MAX30102_CLONE				// if you have a fake Chinese cloned MAX30102 define this
+#define FAKE_MAX30102_CLONE				// if you have a fake Chinese cloned MAX30102 define this
 
 /* USER CODE END PM */
 

@@ -1,7 +1,0 @@
-algorithm_by_RF.c:38:6:rf_heart_rate_and_oxygen_saturation	904	static
-algorithm_by_RF.c:130:7:rf_linear_regression_beta	40	static
-algorithm_by_RF.c:148:7:rf_autocorrelation	40	static
-algorithm_by_RF.c:166:6:rf_initialize_periodicity_search	40	static
-algorithm_by_RF.c:216:6:rf_signal_periodicity	48	static
-algorithm_by_RF.c:265:7:rf_rms	48	static
-algorithm_by_RF.c:285:7:rf_Pcorrelation	40	static
