@@ -1,6 +1,6 @@
 This example provides sample code for a TFT LCD display with a ST7789 driver chip driving a 
-240 x 240 pixel display via a half-duplex SPI interface. These panels are readily available
-on ebay at low cost. The colour depth is 16 bit in 565 format.
+1.3" 240 x 240 pixel display via a half-duplex SPI interface. These panels are readily 
+available on ebay at low cost. The colour depth is 16 bit in 565 format.
 
 The code is separated into 3 layers. The lowest layer is the ST7789 driver that uses the HAL
 to access the SPI1 peripheral. This is in files st7789.h/c. Above that is a graphics 
