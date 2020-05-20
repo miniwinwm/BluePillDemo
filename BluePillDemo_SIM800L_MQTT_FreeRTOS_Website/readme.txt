@@ -32,7 +32,7 @@ of examples on the internet that will explain it.
 The embedded code sets up a connection to the broker then goes into a loop
 reading the data from the potentiometer and the button and publishes them to
 the broker on change. It also monitors for incoming published messages (the
-checkbox state change on the webpage be the only one) and sets the board's
+checkbox state change on the webpage is the only one) and sets the board's
 LED as required. If the potentiometer is turned to maximum and the push
 button pressed simultaneously the loop exits. There's no error checking,
 pings to prevent the broker timing out and disconnecting or attempts to
