@@ -8,6 +8,8 @@ In the project there is a readme file describing the project, a circuit diagram 
 
 Once the code is built, flashing and debugging needs a ST-LINK device connected to the Serial Wire 4 pin header at the end of the Blue Pill board. These are cheaply available on ebay for a few £€$, often supplied together with a Blue Pill board. You need 4 female to female jumper cables to connect the two. Note: The ST-LINK v2 debugger will not connect to Blue Pill boards with fake processors on them. Some Blue Pill boards are supplied with non-genuine or cloned STM103C8T6 processors.
 
+Any requests can be added as an issue to this repo. I'll create a project if I have time and the extra hardware is not too expensive for me to buy.
+
 The Seatalk projects are only of interest for interfacing with the Seatalk marine data network.
 
 # Creating a new Blue Pill project
