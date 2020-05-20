@@ -173,13 +173,13 @@ void Max30102Loop()
   if (ch_hr_valid && ch_spo2_valid)
   {
     MY_SNPRINTF(buf, (size_t)20, "SpO2 %3.1f%%", n_spo2);
-    GraphicsString(10, 221, buf, GREEN);
+    GraphicsStandardString(10, 221, buf, GREEN);
     snprintf(buf, (size_t)20, "Heart rate %d bmp", n_heart_rate);
-    GraphicsString(10, 231, buf, GREEN);
+    GraphicsStandardString(10, 231, buf, GREEN);
   }
   else
   {
-	GraphicsString(10, 229, "Not valid. Are you still alive?", RED);
+	GraphicsStandardString(10, 229, "Not valid. Are you still alive?", RED);
   }
 }
 

@@ -6,6 +6,8 @@
 
 #define GRAPHICS_STANDARD_CHARACTER_HEIGHT 		9
 #define GRAPHICS_STANDARD_CHARACTER_WIDTH 		5
+#define GRAPHICS_LARGE_CHARACTER_HEIGHT 		16
+#define GRAPHICS_LARGE_CHARACTER_WIDTH 			11
 #define GRAPHICS_MAX_SHAPE_CORNERS				10U
 
 /**
@@ -65,7 +67,7 @@ void GraphicsHline(int16_t xStart, int16_t xEnd, int16_t y, colour_t colour);
 void GraphicsRectangle(int16_t x, int16_t y, uint16_t width, uint16_t height, colour_t colour);
 
 /**
- * Plot a single horizontal character using the provided colour.
+ * Plot a standard single horizontal character using the provided colour.
  *
  * @param x Left coordinate of character box
  * @param y Top coordinate of character box
@@ -73,10 +75,10 @@ void GraphicsRectangle(int16_t x, int16_t y, uint16_t width, uint16_t height, co
  * @param colour The colour in 565 format
  * @note Clipped as required
  */
-void GraphicsCharacter(int16_t x, int16_t y, char c, colour_t colour);
+void GraphicsStandardCharacter(int16_t x, int16_t y, char c, colour_t colour);
 
 /**
- * Plot a single vertical using the provided colour.
+ * Plot a large single horizontal character using the provided colour.
  *
  * @param x Left coordinate of character box
  * @param y Top coordinate of character box
@@ -84,10 +86,32 @@ void GraphicsCharacter(int16_t x, int16_t y, char c, colour_t colour);
  * @param colour The colour in 565 format
  * @note Clipped as required
  */
-void GraphicsCharacterVert(int16_t x, int16_t y, char c, colour_t colour);
+void GraphicsLargeCharacter(int16_t x, int16_t y, char c, colour_t colour);
 
 /**
- * Plot a horizontal string of characters using the provided colour.
+ * Plot a standard single vertical using the provided colour.
+ *
+ * @param x Left coordinate of character box
+ * @param y Top coordinate of character box
+ * @param c The ASCII character
+ * @param colour The colour in 565 format
+ * @note Clipped as required
+ */
+void GraphicsStandardCharacterVert(int16_t x, int16_t y, char c, colour_t colour);
+
+/**
+ * Plot a large single vertical using the provided colour.
+ *
+ * @param x Left coordinate of character box
+ * @param y Top coordinate of character box
+ * @param c The ASCII character
+ * @param colour The colour in 565 format
+ * @note Clipped as required
+ */
+void GraphicsLargeCharacterVert(int16_t x, int16_t y, char c, colour_t colour);
+
+/**
+ * Plot a horizontal string of standard characters using the provided colour.
  *
  * @param x Left coordinate of first character box
  * @param y Top coordinate of first character box
@@ -96,10 +120,22 @@ void GraphicsCharacterVert(int16_t x, int16_t y, char c, colour_t colour);
  * @note Clipped as required
  * @note The length of the string in pixels is (uint16_t)strlen(s) * (GRAPHICS_STANDARD_CHARACTER_WIDTH + 1U)
  */
-void GraphicsString(int16_t x, int16_t y, const char *s, colour_t colour);
+void GraphicsStandardString(int16_t x, int16_t y, const char *s, colour_t colour);
 
 /**
- * Plot a vertical string of characters using the provided colour.
+ * Plot a horizontal string of large characters using the provided colour.
+ *
+ * @param x Left coordinate of first character box
+ * @param y Top coordinate of first character box
+ * @param s Null terminated string of ASCII characters
+ * @param colour The colour in 565 format
+ * @note Clipped as required
+ * @note The length of the string in pixels is (uint16_t)strlen(s) * (GRAPHICS_LARGE_CHARACTER_WIDTH + 1U)
+ */
+void GraphicsLargeString(int16_t x, int16_t y, const char *s, colour_t colour);
+
+/**
+ * Plot a vertical string of standard characters using the provided colour.
  *
  * @param x Left coordinate of first character box
  * @param y Top coordinate of first character box
@@ -108,7 +144,19 @@ void GraphicsString(int16_t x, int16_t y, const char *s, colour_t colour);
  * @note Clipped as required
  * @note The length of the string in pixels is (uint16_t)strlen(s) * (GRAPHICS_STANDARD_CHARACTER_WIDTH + 1U)
  */
-void GraphicsStringVert(int16_t x, int16_t y, const char *s, colour_t colour);
+void GraphicsStandardStringVert(int16_t x, int16_t y, const char *s, colour_t colour);
+
+/**
+ * Plot a vertical string of large characters using the provided colour.
+ *
+ * @param x Left coordinate of first character box
+ * @param y Top coordinate of first character box
+ * @param s Null terminated string of ASCII characters
+ * @param colour The colour in 565 format
+ * @note Clipped as required
+ * @note The length of the string in pixels is (uint16_t)strlen(s) * (GRAPHICS_LARGE_CHARACTER_WIDTH + 1U)
+ */
+void GraphicsLargeStringVert(int16_t x, int16_t y, const char *s, colour_t colour);
 
 /**
  * Plot an arbitrary line
