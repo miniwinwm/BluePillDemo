@@ -25,6 +25,11 @@ void GraphicsClear(colour_t colour)
 	filledRectangleClip(0U, 0U, (uint16_t)ST7789_LCD_WIDTH, (uint16_t)ST7789_LCD_HEIGHT, colour);
 }
 
+void GraphicsPixel(int16_t x, int16_t y, colour_t colour)
+{
+	ST7789Pixel((uint16_t)x, (uint16_t)y, colour);
+}
+
 void GraphicsVline(int16_t x, int16_t yStart, int16_t yEnd, colour_t colour)
 {
 	int16_t temp;

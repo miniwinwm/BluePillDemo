@@ -14,6 +14,16 @@
 void GraphicsInit(void);
 
 /**
+ * Plot a single pixel using the provided colour.
+ *
+ * @param x X coordinate
+ * @param y Y coordinate
+ * @param colour The colour in 565 format
+ * @note Clipped as required
+ */
+void GraphicsPixel(int16_t x, int16_t y, colour_t colour);
+
+/**
  * Clear the whole display to the provided colour.
  *
  * @param colour The colour in 565 format
