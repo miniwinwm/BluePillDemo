@@ -5,11 +5,14 @@ level) and heart rate in beats per minute to a serial terminal at 115200 baud. A
 connected is a LED which flashes with the detected heartbeat.
 
 These sensors are quite picky about your finger being placed correctly and without
-movement on the sensor. You might need to shift it around a bit before you get a 
-reading. Once you have found a position where you are getting a strong clear pulse
-showing on the LED then you will normally get a reading. Readings are harder to get 
-from your finger tips if you are bodily cold as the body shuts down blood flow to
-the extremities when you are cold.
+movement on the sensor. It also takes a few seconds for the signal analysis routine
+to pick up on the pulse in the incoming readings and adjust its gain to get useful
+data. rest your finger lightly on the sensor above the glowing LED and keep it 
+still. You also might need to shift it around a bit before you get a reading. Once you 
+have found a position where you are getting a strong clear pulse showing on the LED 
+then you will normally get a reading. Readings are harder to get from your finger 
+tips if you are bodily cold as the body shuts down blood flow to the extremities 
+when you are cold.
 
 This code is a port of Arduino code for the same sensor chip found here...
 
