@@ -44,7 +44,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define MAX_BRIGHTNESS 		140.0f
+#define MAX_HEART_BEAT_TRACE 		140.0f
 #define MY_SNPRINTF 		snprintf	// newlib snprintf with float support is too heavy and not threadsafe so using local snprintf from printf.c
 										// but this causes a compile warning that float support is off so use this macro to prevent it
 #define FAKE_MAX30102_CLONE				// if you have a fake Chinese cloned MAX30102 define this
@@ -100,7 +100,7 @@ void Max30102Loop()
   static uint32_t un_min = 0x3FFFFUL;
   static uint32_t un_max = 0UL;
   static uint32_t un_prev_data = 0UL;  	// variables to calculate the on-board LED brightness that reflects the heartbeats
-  static float f_brightness = 0UL;
+  static float f_heartbeatTrace = 0UL;
   float f_temp;
 
   static int16_t x = 1;
@@ -121,31 +121,31 @@ void Max30102Loop()
     {
       f_temp = aun_red_buffer[i] - un_prev_data;
       f_temp /= (un_max - un_min);
-      f_temp *= MAX_BRIGHTNESS;
-      f_brightness -= f_temp;
-      if (f_brightness < -35.0f)
+      f_temp *= MAX_HEART_BEAT_TRACE;
+      f_heartbeatTrace -= f_temp;
+      if (f_heartbeatTrace < -25.0f)
       {
-        f_brightness = -35.0f;
+        f_heartbeatTrace = -25.0f;
       }
     }
     else
     {
 	  f_temp = un_prev_data - aun_red_buffer[i];
 	  f_temp /= (un_max - un_min);
-	  f_temp *= MAX_BRIGHTNESS;
-	  f_brightness += f_temp;
-	  if (f_brightness > MAX_BRIGHTNESS + 35.0f)
+	  f_temp *= MAX_HEART_BEAT_TRACE;
+	  f_heartbeatTrace += f_temp;
+	  if (f_heartbeatTrace > MAX_HEART_BEAT_TRACE + 25.0f)
 	  {
-		f_brightness = MAX_BRIGHTNESS + 35.0f;
+		f_heartbeatTrace = MAX_HEART_BEAT_TRACE + 25.0f;
 	  }
     }
 
-    GraphicsLine(x, lastY, x + 3, (int16_t)f_brightness + 40, RED);
-    lastY = (int16_t)f_brightness + 40;
+    GraphicsLine(x, 210 - lastY, x + 3, 210 - ((int16_t)f_heartbeatTrace + 30), RED);
+    lastY = (int16_t)f_heartbeatTrace + 30;
     x += 3;
     if (x == 238)
     {
-    	GraphicsFilledRectangle(1, 1, 238, 218, BLACK);
+    	GraphicsFilledRectangle(1, 1, 238, 208, BLACK);
     	x = 1;
     }
     un_prev_data = aun_red_buffer[i];
@@ -169,17 +169,17 @@ void Max30102Loop()
   rf_heart_rate_and_oxygen_saturation(aun_ir_buffer, BUFFER_SIZE, aun_red_buffer, &n_spo2, &ch_spo2_valid, &n_heart_rate, &ch_hr_valid, &ratio, &correl);
 
   // display results
-  GraphicsFilledRectangle(10, 220, 229, 20, BLACK);
+  GraphicsFilledRectangle(10, 212, 229, 28, BLACK);
   if (ch_hr_valid && ch_spo2_valid)
   {
     MY_SNPRINTF(buf, (size_t)20, "SpO2 %3.1f%%", n_spo2);
-    GraphicsStandardString(10, 221, buf, GREEN);
-    snprintf(buf, (size_t)20, "Heart rate %d bmp", n_heart_rate);
-    GraphicsStandardString(10, 231, buf, GREEN);
+    GraphicsLargeString(10, 212, buf, GREEN);
+    snprintf(buf, (size_t)20, "Heart rate %d b/m", n_heart_rate);
+    GraphicsLargeString(10, 227, buf, GREEN);
   }
   else
   {
-	GraphicsStandardString(10, 229, "Not valid. Are you still alive?", RED);
+	  GraphicsLargeString(10, 220, "Not valid", RED);
   }
 }
 
@@ -222,7 +222,8 @@ int main(void)
   SPI_1LINE_TX(&hspi1);
   GraphicsInit();
   GraphicsClear(BLACK);
-  GraphicsRectangle(0, 0, 240, 220, BLUE);
+  GraphicsRectangle(0, 0, 240, 210, BLUE);
+  GraphicsLargeString(10, 220, "Sampling", BLUE);
 
   /* USER CODE END 2 */
 
@@ -249,12 +250,13 @@ void SystemClock_Config(void)
 
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -372,6 +374,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
