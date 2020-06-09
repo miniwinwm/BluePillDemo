@@ -17,8 +17,8 @@ static int16_t triangleCornersY[3];
 
 void GraphicsInit(void)
 {
-	ST7789Reset();
-	ST7789Init();
+	ILI9341Reset();
+	ILI9341Init();
 }
 
 void GraphicsClear(colour_t colour)
@@ -28,7 +28,7 @@ void GraphicsClear(colour_t colour)
 
 void GraphicsPixel(int16_t x, int16_t y, colour_t colour)
 {
-	ST7789Pixel((uint16_t)x, (uint16_t)y, colour);
+	ILI9341Pixel((uint16_t)x, (uint16_t)y, colour);
 }
 
 void GraphicsVline(int16_t x, int16_t yStart, int16_t yEnd, colour_t colour)
@@ -88,7 +88,7 @@ void GraphicsStandardCharacter(int16_t x, int16_t y, char c, colour_t colour)
 		{
 	   		if (rowByte & mask)
 	   		{
-	   			ST7789Pixel(x + (int16_t)charX, y + (int16_t)charY, colour);
+	   			ILI9341Pixel(x + (int16_t)charX, y + (int16_t)charY, colour);
 	   		}
 	   		mask >>= 1;
 		}
@@ -112,7 +112,7 @@ void GraphicsLargeCharacter(int16_t x, int16_t y, char c, colour_t colour)
 		{
 	   		if (rowByte & mask)
 	   		{
-	   			ST7789Pixel(x + (int16_t)charX, y + (int16_t)charY, colour);
+	   			ILI9341Pixel(x + (int16_t)charX, y + (int16_t)charY, colour);
 	   		}
 	   		mask >>= 1;
 	   		if (mask == 0U)
@@ -142,7 +142,7 @@ void GraphicsStandardCharacterVert(int16_t x, int16_t y, char c, colour_t colour
 		{
 	   		if (rowByte & mask)
 	   		{
-	   			ST7789Pixel(x + GRAPHICS_STANDARD_CHARACTER_HEIGHT - (int16_t)charY - 1U, y + (int16_t)charX, colour);
+	   			ILI9341Pixel(x + GRAPHICS_STANDARD_CHARACTER_HEIGHT - (int16_t)charY - 1U, y + (int16_t)charX, colour);
 	   		}
 	   		mask >>= 1;
 		}
@@ -166,7 +166,7 @@ void GraphicsLargeCharacterVert(int16_t x, int16_t y, char c, colour_t colour)
 		{
 	   		if (rowByte & mask)
 	   		{
-	   			ST7789Pixel(x + GRAPHICS_LARGE_CHARACTER_HEIGHT - (int16_t)charY - 1U, y + (int16_t)charX, colour);
+	   			ILI9341Pixel(x + GRAPHICS_LARGE_CHARACTER_HEIGHT - (int16_t)charY - 1U, y + (int16_t)charX, colour);
 	   		}
 	   		mask >>= 1;
 	   		if (mask == 0U)
@@ -219,7 +219,7 @@ void GraphicsLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2, colour_t colou
 			y = y1;
 			while (x <= x2)
 			{
-				ST7789Pixel(x, y, colour);
+				ILI9341Pixel(x, y, colour);
 
 				if (F <= 0)
 				{
@@ -240,7 +240,7 @@ void GraphicsLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2, colour_t colou
 			x = x1;
 			while (y <= y2)
 			{
-				ST7789Pixel(x, y, colour);
+				ILI9341Pixel(x, y, colour);
 				if (F <= 0)
 				{
 					F += dx2;
@@ -263,7 +263,7 @@ void GraphicsLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2, colour_t colou
 			y = y1;
 			while (x <= x2)
 			{
-				ST7789Pixel(x, y, colour);
+				ILI9341Pixel(x, y, colour);
 				if ( F <= 0)
 				{
 					F -= dy2;
@@ -283,7 +283,7 @@ void GraphicsLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2, colour_t colou
 			x = x1;
 			while (y >= y2)
 			{
-				ST7789Pixel(x, y, colour);
+				ILI9341Pixel(x, y, colour);
 				if (F <= 0)
 				{
 					F += dx2;
@@ -306,10 +306,10 @@ void GraphicsCircle(int16_t x, int16_t y, uint16_t radius, colour_t colour)
 	int16_t decision = 1 - radius;
 
 	// plot top, bottom, left and right
-	ST7789Pixel(x, y + radius, colour);
-	ST7789Pixel(x, y - radius, colour);
-	ST7789Pixel(x + radius, y, colour);
-	ST7789Pixel(x - radius, y, colour);
+	ILI9341Pixel(x, y + radius, colour);
+	ILI9341Pixel(x, y - radius, colour);
+	ILI9341Pixel(x + radius, y, colour);
+	ILI9341Pixel(x - radius, y, colour);
 
 	while (yPoint > xPoint)
 	{
@@ -326,14 +326,14 @@ void GraphicsCircle(int16_t x, int16_t y, uint16_t radius, colour_t colour)
 		}
 
 		// plot all quadrants
-		ST7789Pixel(x + xPoint, y + yPoint, colour);
-		ST7789Pixel(x - xPoint, y + yPoint, colour);
-		ST7789Pixel(x + xPoint, y - yPoint, colour);
-		ST7789Pixel(x - xPoint, y - yPoint, colour);
-		ST7789Pixel(x + yPoint, y + xPoint, colour);
-		ST7789Pixel(x - yPoint, y + xPoint, colour);
-		ST7789Pixel(x + yPoint, y - xPoint, colour);
-		ST7789Pixel(x - yPoint, y - xPoint, colour);
+		ILI9341Pixel(x + xPoint, y + yPoint, colour);
+		ILI9341Pixel(x - xPoint, y + yPoint, colour);
+		ILI9341Pixel(x + xPoint, y - yPoint, colour);
+		ILI9341Pixel(x - xPoint, y - yPoint, colour);
+		ILI9341Pixel(x + yPoint, y + xPoint, colour);
+		ILI9341Pixel(x - yPoint, y + xPoint, colour);
+		ILI9341Pixel(x + yPoint, y - xPoint, colour);
+		ILI9341Pixel(x - yPoint, y - xPoint, colour);
 	}
 }
 
@@ -626,14 +626,14 @@ static void arcPoint(int16_t x, int16_t y, int16_t arcX, int16_t arcY, int16_t s
 	{
 		if (angle >= startAngle && angle < endAngle)
 		{
-			ST7789Pixel(arcX, arcY, colour);
+			ILI9341Pixel(arcX, arcY, colour);
 		}
 	}
 	else
 	{
 		if (!(angle >= endAngle && angle < startAngle))
 		{
-			ST7789Pixel(arcX, arcY, colour);
+			ILI9341Pixel(arcX, arcY, colour);
 		}
 	}
 }
