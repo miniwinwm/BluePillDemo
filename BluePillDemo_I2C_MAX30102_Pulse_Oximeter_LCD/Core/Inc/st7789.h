@@ -127,9 +127,9 @@ typedef uint16_t colour_t;
 #define ST7789CMD_NVMSET            0xfcU
 #define ST7789CMD_PROMACT           0xfeU
 
-void ILI9341Reset(void);
-void ILI9341Init(void);
-void ILI9341Pixel(uint16_t x, uint16_t y, colour_t colour);
+void ST7789Reset(void);
+void ST7789Init(void);
+void ST7789Pixel(uint16_t x, uint16_t y, colour_t colour);
 void ST7789FilledRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, colour_t colour);
 void ST7789DrawMonoBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *imageData, colour_t fgColour, colour_t bgColour);
 void ST7789DrawColourBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *imageData);

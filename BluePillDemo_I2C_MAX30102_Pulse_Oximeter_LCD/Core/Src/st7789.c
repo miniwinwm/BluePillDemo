@@ -28,7 +28,7 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 	txComplete = true;
 }
 
-void ILI9341Reset(void)
+void ST7789Reset(void)
 {
 	HAL_GPIO_WritePin(ST7789_RST_PORT, ST7789_RST_PIN, GPIO_PIN_RESET);
 	HAL_Delay(10UL);
@@ -36,7 +36,7 @@ void ILI9341Reset(void)
 	HAL_Delay(120UL);
 }
 
-void ILI9341Init(void)
+void ST7789Init(void)
 {
 	uint8_t i;
 
@@ -134,7 +134,7 @@ static void SetWindow(uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t 
 	HAL_GPIO_WritePin(ST7789_DC_PORT, ST7789_DC_PIN, GPIO_PIN_SET);
 }
 
-void ILI9341Pixel(uint16_t x, uint16_t y, colour_t colour)
+void ST7789Pixel(uint16_t x, uint16_t y, colour_t colour)
 {
 	colour_t beColour = __builtin_bswap16(colour);
 
