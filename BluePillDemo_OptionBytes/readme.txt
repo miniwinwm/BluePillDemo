@@ -31,7 +31,7 @@ If you don't do this then you will corrupt the option bytes in flash and have to
 ST_LINK utility software to set it back to factory condition.
 
 Note: Debugging and stopping part way through this code or powering off in a similar way is
-likely to corrupt your option bytes. You will need to reset them to factor condition using
+likely to corrupt your option bytes. You will need to reset them to factory condition using
 ST-LINK utility if you do this.
 
 No schematic for this project.
