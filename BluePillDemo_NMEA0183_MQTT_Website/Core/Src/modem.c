@@ -1015,7 +1015,7 @@ static void ServerTcpWrite(uint32_t timeoutMs)
 	TcpWriteCommandData_t tcpWriteCommandData;
 	char atCommandBuf[MODEM_MAX_AT_COMMAND_SIZE + 1];
 	char lengthBuf[6];
-	char prompt[5];
+	char prompt[7];
 	ModemStatus_t modemStatus;
 	uint32_t startTime = osKernelGetTickCount();
 	uint8_t i = 0U;
