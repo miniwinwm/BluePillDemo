@@ -124,7 +124,7 @@ int main(void)
   }
 
   // write 4 bytes to start of final page
-  if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, final_page_start_address, 0xBADD10DE4UL) != HAL_OK)
+  if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, final_page_start_address, 0xBADD10DEUL) != HAL_OK)
   {
 	while (1);
   }
